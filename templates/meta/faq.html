@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+
+{% include 'header.html' %}
+
+<body id="page-top">
+
+{% include 'navbar.html' %}
+
+{% include 'scripts.html' %}
+
+<section class="section4">
+    <div class="container">
+        <h2>Frequently Asked Questions (FAQ)</h2>
+
+        <h3>What is this website?</h3>
+        <p>
+            This is a website that allows users to send and receive <a href="https://nerva.one" target="_blank">
+            Nerva</a>, a decentralized, peer-to-peer and open source digital currency.
+        </p>
+        <h3>How does it work?</h3>
+        <p>
+            When a user registers, they choose to a either generate a new Nerva wallet or restore an
+            existing wallet from seed. When logging in, each user's wallet gets mapped to their data in the
+            backend so that they can interact with only their wallet in the browser. Users can then use the
+            site to send XNV and view their transactions.
+        </p>
+        <h3>Is it safe?</h3>
+        <p>
+            All measures have been taken to ensure the security of this application. However, web wallets in
+            general are not recommended for use as there are too many attack vectors and possible ways to
+            potentially bypass security. Additionally, even though users can control the seed, this is
+            technically a custodial wallet because we hold the wallet files and secrets used to access them.
+            If someone finds a way to hack into the server, they could potentially gain access to this as
+            well.<br><br>However, if the user willing to accept the risks, web wallets do make it very easy
+            and convenient to get started, but users have to trust the service.
+        </p>
+        <h3>What should I use instead?</h3>
+        <p>
+            Check the Nerva <a href="https://nerva.one/#downloads" target="_blank">Downloads</a> page, for
+            the most recent software wallets available (CLI/GUI). Anything users can install on their own
+            computer is the safest bet. This website uses <b>nerva-wallet-cli</b> under the hood; users
+            should use that.
+        </p>
+    </div>
+</section>
+
+{% include 'footer.html' %}
+
+</body>
+</html>

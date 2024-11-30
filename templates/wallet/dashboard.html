@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+
+{% include 'header.html' %}
+
+<body id="page-top">
+
+{% include 'navbar.html' %}
+
+<section class="section2">
+    <div class="container-slim">
+        <div class="section-heading text-center">
+            <h2>Wallet Information</h2>
+            <h4>Address</h4>
+            <code class="small">{{ address }}</code>
+            <br><br>
+            <img src="data:image/png;base64,{{ qr_code }}" width=200 class="center" alt="wallet_qr">
+            <hr>
+            <br>
+            <h4>Balance</h4>
+            <code class="inline">{{ balances[1] | from_atomic }} XNV ({{ (balances[0] - balances[1]) | from_atomic }} XNV locked)</code>
+            <span class="btn-grp">
+              <a class="btn btn-lg btn-outline btn-xl js-scroll-trigger" href="#transfers">Transaction History</a>
+              <a class="btn btn-lg btn-outline btn-xl js-scroll-trigger" href="#send">Send Transaction</a>
+              <a class="btn btn-lg btn-outline btn-xl js-scroll-trigger" href="#secrets">View Secrets</a>
+          </span>
+        </div>
+    </div>
+</section>
+
+<section class="section1" id="transfers">
+    <div class="container">
+        <div class="section-heading text-center">
+            <h2>Transaction History</h2>
+
+            <div class="tx-graph">
+                <canvas id="balance-graph"></canvas>
+            </div>
+
+            <table class="table table-striped table-hover table-responsive table-responsive-sm tx-table">
+                <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Tx ID</th>
+                    <th>Amount</th>
+                    <th>Confirmations</th>
+                    <th>Height</th>
+                    <th>Fee</th>
+                </tr>
+                {% if transactions %}
+                    {% for tx in transactions | sort(attribute='timestamp', reverse=True) %}
+                        {% if tx.type == 'pool' %}
+                            <tr class="table-warning">
+                        {% else %}
+                            <tr>
+                        {% endif %}
+                                <td><code>{{ tx.timestamp | datestamp }}</code></td>
+                                <td><code>{{ tx.type | upper }}</code></td>
+                                <td><a href="https://explorer.nerva.one/detail/{{ tx.txid }}"
+                                       target="_blank"><code>{{ tx.txid | truncate(16) }}</code></a></td>
+                                <td><code>{{ tx.amount | from_atomic }} XNV</code></td>
+                                <td><code>{{ tx.confirmations }}</code></td>
+                                <td><code>{{ tx.height }}</code></td>
+                                <td><code>{{ tx.fee | from_atomic }} XNV</code></td>
+                            </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="7">No records found.</td>
+                    </tr>
+                {% endif %}
+            </table>
+        </div>
+    </div>
+</section>
+
+<section class="section2" id="send">
+    <div class="container-slim">
+        <div class="section-heading text-center">
+            <h2>Send Transaction</h2>
+
+            <i class="fa fa-qrcode fa-2x" id="startVideo"></i><br/><br/>
+
+            <div class="hidden" id="preview">
+                <p>Show me a QR code!</p>
+                <video id="video" width="300" height="200"></video>
+                <br/>
+                <button id="stopVideo">Cancel</button>
+            </div>
+
+            <form class="form-slim" method="POST" action="{{ url_for('wallet._send') }}" class="send-form">
+                {{ send_form.csrf_token }}
+                <div class="form-group">
+                    {{ send_form.address.label }}
+                    {{ send_form.address }}
+                </div>
+                <div class="form-group">
+                    {{ send_form.amount.label }}
+                    {{ send_form.amount }}
+                </div>
+                <div class="form-group">
+                    {{ send_form.payment_id.label }}
+                    {{ send_form.payment_id }}
+                </div>
+                <ul>
+                    {% for field, errors in send_form.errors.items() %}
+                        <li>{{ send_form[field].label }}: {{ ', '.join(errors) }}</li>
+                    {% endfor %}
+                </ul>
+                <div class="btn-grp">
+                    <input type="submit" value="Send" class="btn btn-outline btn-xl">
+                    <a class="btn btn-outline btn-xl" onclick="genPaymentID()">Generate Payment ID</a>
+                    </div>
+            </form>
+        </div>
+    </div>
+</section>
+
+<section class="section1" id="secrets">
+    <div class="container-slim">
+        <div class="section-heading text-center">
+            <h2>Secrets</h2>
+            <p>You need to save the secrets below; write them down on a physical medium and keep it in a safe
+                location.</p>
+            <hr>
+            <br>
+            {% if secrets_form is defined %}
+                <form class="form-slim" method="POST" action="{{ url_for('wallet._secrets') }}">
+                    {{ secrets_form.csrf_token }}
+
+                    <div class="form-group">
+                        {{ secrets_form.password.label }}
+                        {{ secrets_form.password }}
+                    </div>
+
+                    <script>
+                        {% for field, errors in secrets_form.errors.items() %}
+                            new Noty ({
+                                type: 'error',
+                                text: '{{ secrets_form[field].label }}: {{ ', '.join(errors) }}',
+                                timeout: 5000,
+                                theme: 'bootstrap-v4',
+                                layout: 'topRight'
+                            }).show();
+                        {% endfor %}
+                    </script>
+
+                    <div class="btn-grp">
+                        <input type="submit" value="Verify" class="btn btn-outline-inverse btn-xl">
+                    </div>
+                </form>
+            {% else %}
+                <h3>Mnemonic Seed</h3>
+                <code class="small">{{ mnemonic_seed }}</code>
+                <br><br>
+                <h3>Public Spend Key</h3>
+                <code class="small">{{ public_spend_key }}</code>
+                <br><br>
+                <h3>Secret Spend Key</h3>
+                <code class="small">{{ secret_spend_key }}</code>
+                <br><br>
+                <h3>Public View Key</h3>
+                <code class="small">{{ public_view_key }}</code>
+                <br><br>
+                <h3>Secret View Key</h3>
+                <code class="small">{{ secret_view_key }}</code>
+                <br><br>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<section class="section2" id="send">
+    <div class="container-slim">
+        <div class="section-heading text-center">
+            <h2>Reset Account</h2>
+            <p>
+                On resetting your account, all your wallet data will be deleted from our servers
+                <b class="warning-text">permanently</b>. Please ensure you have copied the mnemonic seed
+                from the secrets above if there are still funds associated with the wallet.
+            </p>
+            <p>
+                It is highly recommended to make a new wallet on your own and transferring funds there
+                to ensure only you have full ownership and visibility into the private keys/seed.
+                <b class="warning-text">Not your keys, not your crypto!</b>
+            </p>
+
+            <form method="POST" action="{{ url_for('auth._delete') }}" class="send-form">
+                {{ delete_form.csrf_token }}
+
+                <div class="checkbox-wrapper">
+                    <input class="tgl tgl-skewed" name= "confirm" id="confirm" type="checkbox">
+                    <label class="tgl-btn" data-tg-off="Nope" data-tg-on="Confirm" for="confirm"></label>
+                </div>
+
+                {% for field, errors in delete_form.errors.items() %}
+                    <script>
+                        new Noty ({
+                            type: 'error',
+                            theme: 'bootstrap-v4',
+                            layout: 'topCenter',
+                            text: '{{ send_form[field].label }}: {{ ', '.join(errors) }}',
+                            timeout: 5000
+                        }).show();
+                    </script>
+                {% endfor %}
+
+                <input type="submit" value="Reset" class="btn btn-outline btn-xl">
+            </form>
+        </div>
+    </div>
+</section>
+
+{% include 'footer.html' %}
+
+{% include 'scripts.html' %}
+
+</body>
+</html>

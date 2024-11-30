@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+
+{% include 'header.html' %}
+
+<body id="page-top">
+
+{% include 'navbar.html' %}
+
+<header class="masthead">
+    <div class="container h-100">
+        <div class="row h-100">
+            <div class="col-lg-12 my-auto">
+                <div class="header-content mx-auto">
+                    <h1 class="mb-4">Be Advised</h1>
+                    <p>
+                        Nerva is a privacy centric cryptocurrency and is most safely managed on your own personal
+                        devices, on your own network, and with your own copy of the blockchain. This is a publicly
+                        accessible website, and while strict security measures are implemented on our servers, your
+                        account's security <strong>cannot</strong> be guaranteed.
+                    </p>
+                    <p>
+                        If you decide to use this site for managing your funds, you do so at your own risk and are bound
+                        by the terms and conditions of this site. Practice good operational security and do not use this
+                        site for large amounts of funds.
+                    </p>
+                    <p>
+                        <a href="{{ url_for('meta._terms') }}">Terms of Service</a> -
+                        <a href="{{ url_for('meta._faq') }}">FAQ</a> -
+                        <a href="{{ url_for('meta._privacy') }}">Privacy Policy</a>
+                    </p>
+                    <br>
+                    <a href="#register" class="btn btn-outline btn-xl js-scroll-trigger">Proceed</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<section class="section1" id="register">
+    <div class="container-slim">
+        <form class="form-slim" method="POST" action="{{ url_for('auth._register') }}">
+            {{ form.csrf_token }}
+
+            <div class="form-group">
+                {{ form.username.label }}
+                {{ form.username }}
+            </div>
+
+            <div class="form-group">
+                {{ form.email.label }}
+                {{ form.email }}
+            </div>
+
+            <div class="form-group">
+                {{ form.password.label }}
+                {{ form.password }}
+            </div>
+
+            <div class="strength-indicator">
+                <span class="weak"></span>
+                <span class="medium"></span>
+                <span class="strong"></span>
+            </div>
+            <div class="strength-text"></div>
+
+            <div class="form-group">
+                {{ form.confirm_password.label }}
+                {{ form.confirm_password }}
+            </div>
+
+            <div class="form-group small">
+                <label for="terms_reviewed">
+                    <input type="checkbox" name="terms_reviewed" id="terms_reviewed" value="1">
+                    I have read and agree to the <a href="{{ url_for('meta._terms') }}">Terms of Service</a>
+                </label>
+
+                <br>
+
+                <label for="faq_reviewed">
+                    <input type="checkbox" name="faq_reviewed" id="faq_reviewed" value="1">
+                    I have read the <a href="{{ url_for('meta._faq') }}">FAQ</a>
+                </label>
+
+                <br>
+
+                <label for="privacy_reviewed">
+                    <input type="checkbox" name="privacy_reviewed" id="privacy_reviewed" value="1">
+                    I have read and agree to the <a href="{{ url_for('meta._privacy') }}">Privacy Policy</a>
+                </label>
+            </div>
+
+            <ul>
+                {% for field, errors in form.errors.items() %}
+                    <li>{{ form[field].label }}: {{ ', '.join(errors) }}</li>
+                {% endfor %}
+            </ul>
+
+            <div class="btn-grp">
+                <input type="submit" value="Register" class="btn btn-outline-inverse btn-xl">
+            </div>
+        </form>
+
+        <br>
+
+        <p class="small">
+            Already have an account? <a href="{{ url_for('auth._login') }}" class="">Login</a> instead.
+        </p>
+    </div>
+</section>
+
+{% include 'footer.html' %}
+
+{% include 'scripts.html' %}
+
+</body>
+</html>

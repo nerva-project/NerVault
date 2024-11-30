@@ -1,0 +1,27 @@
+name: NerVault
+
+services:
+    db:
+        image: mongo:latest
+        container_name: database
+        ports:
+            - "27017:27017"
+        environment:
+            MONGO_INITDB_ROOT_USERNAME: ${ROOT_USERNAME}
+            MONGO_INITDB_ROOT_PASSWORD: ${ROOT_PASSWORD}
+        volumes:
+            - ./data/mongodb:/data/db
+        networks:
+            - net
+
+    cache:
+        image: valkey/valkey:latest
+        container_name: cache
+        ports:
+            - "6379:6379"
+        networks:
+            - net
+
+networks:
+    net:
+        driver: bridge

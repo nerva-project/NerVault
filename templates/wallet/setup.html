@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+
+{% include 'header.html' %}
+
+<body id="page-top">
+
+{% include 'navbar.html' %}
+
+{% include 'scripts.html' %}
+
+<section class="section2">
+    <div class="container">
+        <div class="section-heading text-center">
+            <h2>Setup Wallet</h2>
+            <p>Choose an option below in order to continue creating your wallet:</p>
+
+            <div class="btn-grp">
+                <a class="btn btn-lg btn-outline btn-xl" href="{{ url_for('wallet._create') }}">
+                    Create new wallet
+                </a>
+            </div>
+
+            <br>
+            <br>
+
+            <form method="POST" action="{{ url_for('wallet._setup') }}">
+                <p class="warning-text"><strong>NOTE: </strong>Your mnemonic seed is sent to the server for restoring
+                    the wallet.</p>
+
+                {{ restore_form.csrf_token }}
+
+                <div class="form-group">
+                    {{ restore_form.seed.label }}
+                    {{ restore_form.seed }}
+                </div>
+
+                <div class="checkbox-wrapper">
+                    <input class="tgl-rev tgl-rev-skewed" name="confirm" id="confirm" type="checkbox">
+                    <label class="tgl-rev-btn" data-tg-off="I disagree" data-tg-on="I agree" for="confirm"></label>
+                </div>
+
+                {% for field, errors in restore_form.errors.items() %}
+                    <!--suppress JSUnresolvedReference -->
+                    <script>
+                        new Noty({
+                            type: 'error',
+                            theme: 'bootstrap-v4',
+                            layout: 'topCenter',
+                            text: '{{ restore_form[field].label }}: {{ ', '.join(errors) }}',
+                            timeout: 5000
+                        }).show();
+                    </script>
+                {% endfor %}
+
+                <div class="btn-grp">
+                    <input type="submit" value="Restore from seed" class="btn btn-outline btn-xl">
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
+
+{% include 'footer.html' %}
+
+</body>
+</html>

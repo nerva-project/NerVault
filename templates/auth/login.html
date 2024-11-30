@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+
+{% include 'header.html' %}
+
+<body id="page-top">
+
+{% include 'navbar.html' %}
+
+<section class="section2">
+    <div class="container-slim">
+        <h2>Login</h2>
+
+        <form class="form-slim" method="POST" action="{{ url_for('auth._login') }}">
+            {{ form.csrf_token }}
+
+            {% for f in form %}
+                {% if f.name != 'csrf_token' %}
+                    <div class="form-group">
+                        {{ f.label }}
+                        {{ f }}
+                    </div>
+                {% endif %}
+            {% endfor %}
+
+            <ul>
+                {% for field, errors in form.errors.items() %}
+                    <li>{{ form[field].label }}: {{ ', '.join(errors) }}</li>
+                {% endfor %}
+            </ul>
+
+            <div class="btn-grp">
+                <input type="submit" value="Login" class="btn btn-link btn-outline btn-xl">
+            </div>
+        </form>
+
+        <br>
+
+        <p class="small">
+            Don't have an account? <a href="{{ url_for('auth._register') }}">Register</a> now.
+        </p>
+        <p class="small">
+            Forgot your password? <a href="{{ url_for('auth._reset') }}">Reset</a>.
+        </p>
+    </div>
+</section>
+
+{% include 'footer.html' %}
+
+{% include 'scripts.html' %}
+
+</body>
+</html>

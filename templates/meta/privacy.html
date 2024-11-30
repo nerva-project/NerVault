@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+
+{% include 'header.html' %}
+
+<body id="page-top">
+
+{% include 'navbar.html' %}
+
+<section class="section4">
+    <div class="container">
+        <h2>Privacy Policy</h2>
+
+        <p>The information collected is as follows:</p>
+
+        <ul>
+            <li>
+                Web server access logs (Source IP address, browser user-agent, page requests, etc).
+            </li>
+            <li>
+                Email address and salted/hashed password.
+            </li>
+            <li>
+                Application events and metrics (function execution and the user who triggered).
+            </li>
+        </ul>
+        <p class="warning-text">
+            Logs are checked and events are captured for troubleshooting purposes only. None of this data is
+            shared with any third-party.
+        </p>
+    </div>
+</section>
+
+{% include 'footer.html' %}
+
+{% include 'scripts.html' %}
+
+</body>
+</html>

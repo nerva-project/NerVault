@@ -1,0 +1,180 @@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.4.1/jquery.easing.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.2/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/noty/3.1.4/noty.min.js"></script>
+<script src="/assets/js/main.js"></script>
+
+{% if request.path == '/register' %}
+    <script>
+        let password = document.getElementById('password');
+        const indicator = document.querySelector(".strength-indicator");
+        const input = document.querySelector("input");
+        const weak = document.querySelector(".weak");
+        const medium = document.querySelector(".medium");
+        const strong = document.querySelector(".strong");
+        const text = document.querySelector(".strength-text");
+        let regExpWeak = /[a-z]/;
+        let regExpMedium = /\d+/;
+        let regExpStrong = /.[!@#$%^&*?_~()]/;
+
+        password.addEventListener('keyup', function () {
+            console.log(password.value);
+            if (password.value !== "") {
+                indicator.style.display = "flex";
+                indicator.style.margin = "0 auto";
+                if (password.value.length <= 8 && (password.value.match(regExpWeak) || password.value.match(regExpMedium) || password.value.match(regExpStrong))) no = 1;
+                if (password.value.length >= 8 && ((password.value.match(regExpWeak) && password.value.match(regExpMedium)) || (password.value.match(regExpMedium) && password.value.match(regExpStrong)) || (password.value.match(regExpWeak) && password.value.match(regExpStrong)))) no = 2;
+                if (password.value.length >= 8 && password.value.match(regExpWeak) && password.value.match(regExpMedium) && password.value.match(regExpStrong)) no = 3;
+                if (no === 1) {
+                    weak.classList.add("active");
+                    text.style.display = "block";
+                    text.textContent = "Your password is too weak";
+                    text.classList.add("weak");
+                }
+                if (no === 2) {
+                    medium.classList.add("active");
+                    text.textContent = "Your password is not that strong";
+                    text.classList.add("medium");
+                } else {
+                    medium.classList.remove("active");
+                    text.classList.remove("medium");
+                }
+                if (no === 3) {
+                    weak.classList.add("active");
+                    medium.classList.add("active");
+                    strong.classList.add("active");
+                    text.textContent = "Your password is strong";
+                    text.classList.add("strong");
+                } else {
+                    strong.classList.remove("active");
+                    text.classList.remove("strong");
+                }
+            } else {
+                indicator.style.display = "none";
+                text.style.display = "none";
+            }
+        })
+    </script>
+{% endif %}
+
+{% if request.path == '/wallet/loading' %}
+    <script>
+        function check_status() {
+            fetch('/wallet/status')
+                .then((resp) => resp.json())
+                .then(function (data) {
+                    if (data['created'] && data['volume'] && data['connected'] === false && data['initializing'] === false) {
+                        fetch('/wallet/connect')
+                    }
+
+                    if (data['created'] && data['volume'] && data['connected'] && data['ready']) {
+                        window.location.href = "{{ url_for('wallet._dashboard') }}"
+                    }
+                })
+        }
+
+        $(document).ready(function () {
+            window.setInterval(function () {
+                check_status();
+            }, 10000);
+
+            check_status()
+        });
+    </script>
+{% endif %}
+
+{% if request.path == '/wallet/dashboard' %}
+    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
+    <script>
+        function decodeOnce(codeReader, selectedDeviceId) {
+            codeReader.decodeOnceFromVideoDevice(selectedDeviceId, 'video').then((result) => {
+                const url = new URL(result.text);
+                if (url.protocol === 'nerva:') {
+                    document.getElementById('address').value = url.pathname;
+                    url.searchParams.forEach((value, key) => {
+                        if (key === 'tx_amount') {
+                            document.getElementById('amount').value = value;
+                        }
+                    });
+                }
+                codeReader.reset();
+                $('#preview').hide();
+            }).catch((err) => {
+                console.error(err);
+                codeReader.reset();
+                $('#preview').hide();
+            })
+        }
+
+        window.addEventListener('load', function () {
+            const codeReader = new ZXing.BrowserQRCodeReader();
+            codeReader.listVideoInputDevices()
+                .then((videoInputDevices) => {
+                    document.getElementById('startVideo').addEventListener('click', () => {
+                        $('#preview').show();
+                        decodeOnce(codeReader, videoInputDevices[0].deviceId);
+                    });
+                    document.getElementById('stopVideo').addEventListener('click', () => {
+                        codeReader.reset();
+                        $('#preview').hide();
+                    })
+                })
+                .catch((err) => {
+                    console.error(err)
+                })
+        })
+    </script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+    <script>
+        const set_title = function (t) {
+            return {
+                display: true,
+                text: t,
+                fontColor: 'white',
+            }
+        };
+
+        let ctx = document.getElementById('balance-graph').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [0,
+                    {% for i in sorted_transactions %}'{{ sorted_transactions[i].timestamp | datestamp  }}',{% endfor %}],
+                datasets: [{
+                    label: 'Balance',
+                    backgroundColor: '#55a8bf',
+                    borderColor: '#55a8bf',
+                    data: [0, {% for i in sorted_transactions %}{{ sorted_transactions[i].total | from_atomic }}, {% endfor %}],
+                    fill: false,
+                }]
+            },
+            options: {
+                title: set_title('Nerva Wallet Balance')
+            }
+        });
+    </script>
+
+    <script>
+        function genPaymentID() {
+            const genRanHex = size => [...Array(size)].map(() => Math.floor(Math.random() * 16).toString(16)).join('');
+            document.getElementById('payment_id').value = genRanHex(16);
+        }
+    </script>
+{% endif %}
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <script type="text/javascript">
+            {% for category, message in messages %}
+                new Noty({
+                    type: '{{ category }}',
+                    theme: 'bootstrap-v4',
+                    layout: 'topCenter',
+                    text: '{{ message }}',
+                    timeout: 3000
+                }).show();
+            {% endfor %}
+        </script>
+    {% endif %}
+{% endwith %}

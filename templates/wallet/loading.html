@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+
+{% include 'header.html' %}
+
+<body id="page-top">
+
+{% include 'navbar.html' %}
+
+<section class="section3">
+    <div class="container-slim">
+        <h2>Wallet is being connected</h2>
+        <p>
+            Your wallet is connecting. It should take a few minutes. This page should auto-refresh when it is
+            ready ... if not, click the button below.
+
+            <br><br>
+
+            If you are restoring from a seed, please allow upto a couple of hours for the process to complete.
+        </p>
+
+        <div class="btn-grp">
+            <a class="btn btn-lg btn-link btn-outline btn-xl" href="{{ url_for('wallet._dashboard') }}">Check Again</a>
+        </div>
+    </div>
+</section>
+
+{% include 'footer.html' %}
+
+{% include 'scripts.html' %}
+
+</body>
+</html>
