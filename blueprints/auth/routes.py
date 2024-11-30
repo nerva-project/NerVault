@@ -33,8 +33,6 @@ async def _register() -> ResponseReturnValue:
         return redirect(url_for("wallet._dashboard"))
 
     if await form.validate_on_submit():
-        redirect_url = url_for("auth._register") + "#register"
-
         user = User(username=form.username.data)
         try:
             await user.load()
@@ -56,11 +54,16 @@ async def _register() -> ResponseReturnValue:
 
                 if (await res.json())["temporary"]:
                     await flash(
-                        "Registrations with temporary disposable emails are not allowed."
-                        "Please use a valid email address.",
+                        "Registrations with temporary disposable emails are not allowed.",
                         "error",
                     )
-                    return redirect(redirect_url)
+
+                    form.email.data = None
+                    form.password.data = None
+                    form.confirm_password.data = None
+                    return await render_template(
+                        "auth/register.html", form=form, scroll=True
+                    )
 
         if not schema.validate(form.password.data):
             await flash(
@@ -68,11 +71,21 @@ async def _register() -> ResponseReturnValue:
                 "at least one uppercase, one lowercase, one digit, and a symbol.",
                 "warning",
             )
-            return redirect(redirect_url)
+
+            form.password.data = None
+            form.confirm_password.data = None
+            return await render_template(
+                "auth/register.html", form=form, scroll=True
+            )
 
         if not form.password.data == form.confirm_password.data:
             await flash("Passwords do not match.", "warning")
-            return redirect(redirect_url)
+
+            form.password.data = None
+            form.confirm_password.data = None
+            return await render_template(
+                "auth/register.html", form=form, scroll=True
+            )
 
         user = User(username=form.username.data)
         user.email = form.email.data

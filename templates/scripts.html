@@ -6,6 +6,16 @@
 
 {% if request.path == '/register' %}
     <script>
+        {% if scroll %}
+            $(document).ready(function () {
+                $('html, body').animate({
+                    scrollTop: $('#register').offset().top
+                }, 1000);
+            });
+        {% endif %}
+    </script>
+
+    <script>
         let password = document.getElementById('password');
         const indicator = document.querySelector(".strength-indicator");
         const input = document.querySelector("input");
