@@ -16,45 +16,55 @@
     </script>
 
     <script>
-        let password = document.getElementById('password');
+        const password = document.getElementById('password');
         const indicator = document.querySelector(".strength-indicator");
-        const input = document.querySelector("input");
+        const text = document.querySelector(".strength-text");
         const weak = document.querySelector(".weak");
         const medium = document.querySelector(".medium");
         const strong = document.querySelector(".strong");
-        const text = document.querySelector(".strength-text");
-        let regExpWeak = /[a-z]/;
-        let regExpMedium = /\d+/;
-        let regExpStrong = /.[!@#$%^&*?_~()]/;
+
+        const regExpWeak = /[a-z]/;
+        const regExpMedium = /\d+/;
+        const regExpStrong = /.[!@#$%^&*?_~()]/;
+
+        const button = document.getElementById('submit');
+        button.disabled = true;
 
         password.addEventListener('keyup', function () {
             console.log(password.value);
+            let type = 0;
+
             if (password.value !== "") {
                 indicator.style.display = "flex";
                 indicator.style.margin = "0 auto";
-                if (password.value.length <= 8 && (password.value.match(regExpWeak) || password.value.match(regExpMedium) || password.value.match(regExpStrong))) no = 1;
-                if (password.value.length >= 8 && ((password.value.match(regExpWeak) && password.value.match(regExpMedium)) || (password.value.match(regExpMedium) && password.value.match(regExpStrong)) || (password.value.match(regExpWeak) && password.value.match(regExpStrong)))) no = 2;
-                if (password.value.length >= 8 && password.value.match(regExpWeak) && password.value.match(regExpMedium) && password.value.match(regExpStrong)) no = 3;
-                if (no === 1) {
+
+                if (password.value.length <= 8 && (password.value.match(regExpWeak) || password.value.match(regExpMedium) || password.value.match(regExpStrong))) type = 1;
+                if (password.value.length >= 8 && ((password.value.match(regExpWeak) && password.value.match(regExpMedium)) || (password.value.match(regExpMedium) && password.value.match(regExpStrong)) || (password.value.match(regExpWeak) && password.value.match(regExpStrong)))) type = 2;
+                if (password.value.length >= 8 && password.value.match(regExpWeak) && password.value.match(regExpMedium) && password.value.match(regExpStrong)) type = 3;
+
+                if (type === 1) {
                     weak.classList.add("active");
                     text.style.display = "block";
                     text.textContent = "Your password is too weak";
                     text.classList.add("weak");
+                    button.disabled = true;
                 }
-                if (no === 2) {
+                if (type === 2) {
                     medium.classList.add("active");
                     text.textContent = "Your password is not that strong";
                     text.classList.add("medium");
+                    button.disabled = true;
                 } else {
                     medium.classList.remove("active");
                     text.classList.remove("medium");
                 }
-                if (no === 3) {
+                if (type === 3) {
                     weak.classList.add("active");
                     medium.classList.add("active");
                     strong.classList.add("active");
                     text.textContent = "Your password is strong";
                     text.classList.add("strong");
+                    button.disabled = false;
                 } else {
                     strong.classList.remove("active");
                     text.classList.remove("strong");
@@ -62,8 +72,9 @@
             } else {
                 indicator.style.display = "none";
                 text.style.display = "none";
+                button.disabled = true;
             }
-        })
+        });
     </script>
 {% endif %}
 
