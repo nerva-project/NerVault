@@ -45,8 +45,11 @@ async def _setup() -> ResponseReturnValue:
             )
             await cache.store_data(f"init_wallet_{current_user.username}", 30, c)
             await capture_event(current_user.username, "restore_wallet")
+
+            await current_user.load()
             current_user.wallet_created = True
             await current_user.save()
+
             return redirect(url_for("wallet._loading"))
 
         else:
