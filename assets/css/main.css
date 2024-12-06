@@ -71,6 +71,11 @@ form {
     margin-bottom: 10px;
 }
 
+.form-group > p {
+    margin-left: 100px;
+    margin-right: 100px;
+}
+
 form .strength-indicator {
     width: 60%;
     height: 10px;
@@ -482,11 +487,6 @@ footer ul li a:hover, footer ul li a:focus, footer ul li a:active, footer ul li 
 
 .center {
     text-align: center;
-}
-
-.small {
-    font-size: .9em;
-    word-wrap: break-word;
 }
 
 .list-inline-item {
