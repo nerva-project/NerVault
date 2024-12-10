@@ -202,13 +202,18 @@ async def create_app() -> Quart:
 
         # CLI commands
         @app.cli.command("clean_containers")
-        def clean_containers() -> None:
+        def _clean_containers() -> None:
             """Cleans up Docker containers."""
-            docker.cleanup()
+
+            async def __clean_containers() -> None:
+                await docker.cleanup()
+                print("[INFO] Cleaned up expired wallet containers")
+
+            asyncio.get_event_loop().run_until_complete(__clean_containers())
 
         @app.cli.command("reset_wallet")
         @click.argument("username")
-        def reset_wallet(username: str) -> None:
+        def _reset_wallet(username: str) -> None:
             """
             Resets the wallet data for a given user.
 
@@ -216,18 +221,18 @@ async def create_app() -> Quart:
                 username (str): The username whose wallet data is to be cleared.
             """
 
-            async def _reset_wallet() -> None:
+            async def __reset_wallet() -> None:
                 from models import User
 
                 user = User(username=username)
                 await user.clear_wallet_data()
                 print(f"Wallet data cleared for user {user.username}")
 
-            asyncio.ensure_future(_reset_wallet(), loop=asyncio.get_running_loop())
+            asyncio.get_event_loop().run_until_complete(__reset_wallet())
 
         @app.cli.command("maintenance")
         @click.argument("mode")
-        def maintenance(mode: str) -> None:
+        def _maintenance(mode: str) -> None:
             """
             Enables or disables maintenance mode.
 
@@ -235,7 +240,7 @@ async def create_app() -> Quart:
                 mode (str): "enable" or "disable" to set the maintenance mode.
             """
 
-            async def _maintenance() -> None:
+            async def __maintenance() -> None:
                 from library.helpers import on_maintenance, set_maintenance
 
                 if mode == "enable":
@@ -246,7 +251,7 @@ async def create_app() -> Quart:
                         print("[INFO] Maintenance mode enabled")
 
                 elif mode == "disable":
-                    if not on_maintenance():
+                    if not await on_maintenance():
                         print("[WARNING] Application not on maintenance mode")
                     else:
                         await set_maintenance(False)
@@ -254,7 +259,7 @@ async def create_app() -> Quart:
                 else:
                     print("[USAGE] quart maintenance enable/disable ")
 
-            asyncio.ensure_future(_maintenance(), loop=asyncio.get_running_loop())
+            asyncio.get_event_loop().run_until_complete(__maintenance())
 
         # Error handling
         @app.errorhandler(Unauthorized)

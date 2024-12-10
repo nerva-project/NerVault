@@ -219,7 +219,9 @@ class Config:
         Saves the configuration to the database.
         """
         await Config.collection.update_one(
-            {"key": self.key}, {"key": self.key, "value": self.value}, upsert=True
+            {"key": self.key},
+            {"$set": {"key": self.key, "value": self.value}},
+            upsert=True,
         )
 
     async def delete(self) -> None:
