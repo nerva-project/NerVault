@@ -20,23 +20,21 @@ else:
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
-async def main() -> Quart:
+loop: asyncio.AbstractEventLoop = asyncio.new_event_loop()
+asyncio.set_event_loop(loop)
+
+# Run the asynchronous create_app function and retrieve the app instance
+app: Quart = loop.run_until_complete(asyncio.gather(create_app()))[0]
+
+
+def main() -> None:
     """
-    Creates and returns the Quart application instance.
-
-    Returns:
-        Quart: The initialized Quart app instance.
+    Main function to run the app
     """
-    _app: Quart = await create_app()
-    return _app
-
-
-if __name__ == "__main__":
-    loop: asyncio.AbstractEventLoop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    # Run the asynchronous main function and retrieve the app instance
-    app: Quart = loop.run_until_complete(asyncio.gather(main()))[0]
     app.run(
         host="0.0.0.0", port=17569, loop=loop
     )  # , certfile="cert.pem", keyfile="key.pem")
+
+
+if __name__ == "__main__":
+    main()
