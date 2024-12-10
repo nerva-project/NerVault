@@ -12,6 +12,7 @@ from config import (
     MAIL_PASSWORD,
     MAIL_USERNAME,
     MAIL_DEFAULT_SENDER,
+    MAIL_VALIDATE_CERTS,
 )
 
 
@@ -44,6 +45,7 @@ async def send_email(to: str, subject: str, template: str) -> None:
             password=MAIL_PASSWORD,
             use_tls=MAIL_USE_SSL,
             start_tls=MAIL_USE_TLS,
+            validate_certs=MAIL_VALIDATE_CERTS,
         )
 
     except aiosmtplib.SMTPException:

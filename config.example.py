@@ -29,6 +29,7 @@ MAIL_HOST = "localhost"
 MAIL_PORT = 25
 MAIL_USE_SSL = False
 MAIL_USE_TLS = False
+MAIL_VALIDATE_CERTS = False
 MAIL_USERNAME = "email@example.com"
 MAIL_PASSWORD = "password"
 MAIL_DEFAULT_SENDER = "NerVault <email@example.com>"

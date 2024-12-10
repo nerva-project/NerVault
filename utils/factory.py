@@ -113,6 +113,7 @@ async def create_app() -> Quart:
         password=app.config["MAIL_PASSWORD"],
         use_tls=app.config["MAIL_USE_SSL"],
         start_tls=app.config["MAIL_USE_TLS"],
+        validate_certs=app.config["MAIL_VALIDATE_CERTS"],
     )
 
     try:
