@@ -27,6 +27,11 @@ dependencies = [
     "python-dateutil>=2.9.0.post0",
 ]
 
+[project.optional-dependencies]
+speed = [
+    "uvloop>=0.21.0",
+]
+
 [tool.uv]
 dev-dependencies = [
     "pre-commit>=4.0.1",
