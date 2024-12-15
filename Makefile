@@ -13,7 +13,7 @@ install:
 install-dev:
 	uv sync --all-extras
 
-install-speed:
+install-extras:
 	uv sync --all-extras --no-dev
 
 up:
