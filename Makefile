@@ -1,6 +1,12 @@
 env:
 	uv venv
 
+rmenv:
+	rm -rf .venv
+
+activate:
+	source .venv/bin/activate
+
 install:
 	uv sync --no-dev
 
@@ -16,15 +22,15 @@ down:
 image:
 	docker pull sn1f3rt/nerva:latest
 
-run:
+dev:
 	uv run launcher.py
 
 prod:
-	uv run launcher.py --prod
+	hypercorn --bind 0.0.0.0:17569 --certfile cert.pem --keyfile key.pem launcher:app
 
 format:
 	ruff check --select I --fix .
 	ruff format .
 
-.PHONY: env install install-dev up down run prod format
-.DEFAULT_GOAL := run
+.PHONY: env rmenv activate install install-dev up down image dev prod format
+.DEFAULT_GOAL := dev
