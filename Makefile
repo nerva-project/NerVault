@@ -8,7 +8,7 @@ activate:
 	source .venv/bin/activate
 
 install:
-	uv sync --no-dev
+	uv sync --all-extras --no-dev
 
 install-dev:
 	uv sync --all-extras
