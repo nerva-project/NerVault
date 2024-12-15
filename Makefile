@@ -8,10 +8,13 @@ activate:
 	source .venv/bin/activate
 
 install:
-	uv sync --all-extras --no-dev
+	uv sync --no-dev
 
 install-dev:
 	uv sync --all-extras
+
+install-speed:
+	uv sync --all-extras --no-dev
 
 up:
 	docker compose up -d
