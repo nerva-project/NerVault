@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import Any, Dict, Optional
 
 import sys
@@ -7,44 +5,44 @@ import json
 from datetime import timedelta
 
 from aiohttp import ClientError, ClientSession
-from valkey.asyncio import Valkey
-from valkey.exceptions import ConnectionError
+from redis.asyncio import Redis
+from redis.exceptions import ConnectionError
 
 import config
 
 
 class Cache:
     """
-    A class for interacting with a caching service (Valkey) and retrieving
+    A class for interacting with a caching service (Redis) and retrieving
     coin-related information from an external API (CoinGecko).
 
     This class handles storing data in the cache, retrieving cached data, and
     fetching real-time coin information such as price, market cap, and volume.
 
     Attributes:
-        valkey (Valkey): An instance of the Valkey client to interact with the cache.
+        redis (Redis): An instance of the Redis client to interact with the cache.
     """
 
     def __init__(self) -> None:
         """
-        Initializes the Cache instance by establishing a connection with the Valkey caching service.
+        Initializes the Cache instance by establishing a connection with the Redis caching service.
 
         Raises:
-            SystemExit: If the connection to the Valkey service fails.
+            SystemExit: If the connection to the Redis service fails.
         """
         try:
-            from valkey import Valkey as Vlk
+            from redis import Redis as Rds
 
-            client = Vlk.from_url(config.VALKEY_URL)
+            client = Rds.from_url(config.REDIS_URL)
             client.ping()
             del client
-            del Vlk
+            del Rds
 
         except ConnectionError:
-            print("Failed to connect to Valkey. Exiting...")
+            print("Failed to connect to Redis. Exiting...")
             sys.exit(1)
 
-        self.valkey: Valkey = Valkey.from_url(config.VALKEY_URL)
+        self.redis: Redis = Redis.from_url(config.REDIS_URL)
 
     async def store_data(
         self, item_name: str, expiration_minutes: int, data: str
@@ -57,7 +55,7 @@ class Cache:
             expiration_minutes (int): The expiration time for the cached data, in minutes.
             data (str): The data to store in the cache.
         """
-        await self.valkey.setex(
+        await self.redis.setex(
             item_name, timedelta(minutes=expiration_minutes), value=data
         )
 
@@ -71,9 +69,9 @@ class Cache:
         Returns:
             Optional[str]: The cached data as a string if it exists, or None if no data is found.
         """
-        data = await self.valkey.get(item_name)
+        data = await self.redis.get(item_name)
         if data:
-            return data.decode()
+            return str(data.decode())
         return None
 
     async def get_coin_info(self) -> Dict[str, Any]:
@@ -85,10 +83,10 @@ class Cache:
         Returns:
             Dict[str, Any]: A dictionary containing coin information such as price, market cap, etc.
         """
-        info = await self.valkey.get("coin_info")
+        cached = await self.redis.get("coin_info")
 
-        if info:
-            return json.loads(info)
+        if cached:
+            return json.loads(cached)  # type: ignore[no-any-return]
 
         data = {
             "localization": "false",
@@ -110,7 +108,7 @@ class Cache:
                 async with session.get(url, headers=headers, params=data) as res:
                     res_json = await res.json()
 
-            info = {
+            result: Dict[str, Any] = {
                 "genesis_date": res_json["genesis_date"],
                 "market_cap_rank": res_json["market_cap_rank"],
                 "current_price": res_json["market_data"]["current_price"]["usd"],
@@ -119,9 +117,9 @@ class Cache:
                 "last_updated": res_json["last_updated"],
             }
 
-            await self.store_data("coin_info", 15, json.dumps(info))
+            await self.store_data("coin_info", 15, json.dumps(result))
 
-            return info
+            return result
 
         except ClientError:
             return {}

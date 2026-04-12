@@ -1,5 +1,8 @@
 # NerVault
 
+[![Lint](https://github.com/nerva-project/NerVault/actions/workflows/lint.yml/badge.svg)](https://github.com/nerva-project/NerVault/actions/workflows/lint.yml)
+[![Type Check](https://github.com/nerva-project/NerVault/actions/workflows/typecheck.yml/badge.svg)](https://github.com/nerva-project/NerVault/actions/workflows/typecheck.yml)
+
 > A custodial web wallet for the Nerva (XNV) cryptocurrency.
 
 ## Funding
@@ -11,14 +14,10 @@ The application itself is free to use but it's development and hosting are not. 
 - **Bitcoin (BTC):** `bc1qzg4jjtxq6cg22pmlaesyva64nrjzcaqud968vf`
 - **Ethereum (ETH):** `0x97173e82df1d9Cc76946241D63A9f9231Dea1566`
 
-or if you prefer, you can support using fiat currency:
-
-- **GitHub Sponsors:** [Sponsor](https://github.com/sponsors/Sn1F3rt)
-- **Patreon:** [Support](https://www.patreon.com/sn1f3rt)
-- **Buy Me A Coffee:** [Donate](https://www.buymeacoffee.com/sn1f3rt)
+or if you prefer, you can support using fiat currency via [GitHub Sponsors](https://github.com/sponsors/sn1f3rt), [Patreon](https://www.patreon.com/sn1f3rt), or [Buy Me A Coffee](https://www.buymeacoffee.com/sn1f3rt).
 
 ## License
 
 [GNU General Public License v3.0](LICENSE)
 
-Copyright &copy; 2024 [Sayan "Sn1F3rt" Bhattacharyya](https://sn1f3rt.dev), [The Nerva Project](https://nerva.one)
+Copyright &copy; 2024-present [Sayan "sn1f3rt" Bhattacharyya](https://sn1f3rt.dev), [The Nerva Project](https://nerva.one)

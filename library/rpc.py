@@ -1,9 +1,7 @@
-from __future__ import annotations
-
 from typing import Any, Dict, Tuple, Optional
 
 from httpx import ReadError, ConnectError, RemoteProtocolError
-from nerva.wallet import Wallet as WalletRPC
+from nerva import WalletRPC
 
 
 class Wallet:
@@ -44,7 +42,7 @@ class Wallet:
         Returns:
             Dict[str, Any]: The height information from the wallet RPC.
         """
-        return await self.rpc.get_height()
+        return await self.rpc.get_height()  # type: ignore[no-any-return]
 
     async def public_spend_key(self) -> str:
         """
@@ -53,7 +51,7 @@ class Wallet:
         Returns:
             str: The public spend key.
         """
-        return (await self.rpc.query_key(key_type="public_spend_key"))["result"][
+        return (await self.rpc.query_key(key_type="public_spend_key"))["result"][  # type: ignore[no-any-return]
             "public_spend_key"
         ]
 
@@ -64,7 +62,7 @@ class Wallet:
         Returns:
             str: The secret spend key.
         """
-        return (await self.rpc.query_key(key_type="secret_spend_key"))["result"][
+        return (await self.rpc.query_key(key_type="secret_spend_key"))["result"][  # type: ignore[no-any-return]
             "private_spend_key"
         ]
 
@@ -75,7 +73,7 @@ class Wallet:
         Returns:
             str: The public view key.
         """
-        return (await self.rpc.query_key(key_type="public_view_key"))["result"][
+        return (await self.rpc.query_key(key_type="public_view_key"))["result"][  # type: ignore[no-any-return]
             "public_view_key"
         ]
 
@@ -86,7 +84,7 @@ class Wallet:
         Returns:
             str: The secret view key.
         """
-        return (await self.rpc.query_key(key_type="secret_view_key"))["result"][
+        return (await self.rpc.query_key(key_type="secret_view_key"))["result"][  # type: ignore[no-any-return]
             "private_view_key"
         ]
 
@@ -97,7 +95,7 @@ class Wallet:
         Returns:
             str: The wallet mnemonic seed.
         """
-        return (await self.rpc.query_key(key_type="mnemonic"))["result"]["mnemonic"]
+        return (await self.rpc.query_key(key_type="mnemonic"))["result"]["mnemonic"]  # type: ignore[no-any-return]
 
     async def new_address(
         self, account_index: int = 0, label: Optional[str] = None
@@ -128,9 +126,11 @@ class Wallet:
         Returns:
             str: The integrated address.
         """
-        return (await self.rpc.make_integrated_address(address, payment_id))[
-            "result"
-        ]["integrated_address"]
+        return (  # type: ignore[no-any-return]
+            await self.rpc.make_integrated_address(
+                payment_id=payment_id, standard_address=address
+            )
+        )["result"]["integrated_address"]
 
     async def validate_address(self, address: str) -> bool:
         """
@@ -142,7 +142,7 @@ class Wallet:
         Returns:
             bool: True if valid, False otherwise.
         """
-        return (await self.rpc.validate_address(address))["result"]["valid"]
+        return (await self.rpc.validate_address(address=address))["result"]["valid"]  # type: ignore[no-any-return]
 
     async def is_integrated(self, address: str) -> bool:
         """
@@ -154,7 +154,7 @@ class Wallet:
         Returns:
             bool: True if integrated, False otherwise.
         """
-        return (await self.rpc.validate_address(address))["result"]["integrated"]
+        return (await self.rpc.validate_address(address=address))["result"]["integrated"]  # type: ignore[no-any-return]
 
     async def get_address(self, account_index: int = 0) -> str:
         """
@@ -166,7 +166,7 @@ class Wallet:
         Returns:
             str: The address.
         """
-        return (await self.rpc.get_address(account_index=account_index))["result"][
+        return (await self.rpc.get_address(account_index=account_index))["result"][  # type: ignore[no-any-return]
             "address"
         ]
 
@@ -193,7 +193,7 @@ class Wallet:
         Returns:
             Dict[str, Any]: The transfer details.
         """
-        return (
+        return (  # type: ignore[no-any-return]
             await self.rpc.get_transfers(
                 account_index=account_index,
                 incoming=True,
@@ -261,4 +261,4 @@ class Wallet:
                 ring_size=0,
             )
 
-        return transfer["result"]
+        return transfer["result"]  # type: ignore[no-any-return]

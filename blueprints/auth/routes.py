@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from blueprints.auth import auth_bp
 
 import datetime
@@ -7,12 +5,14 @@ from asyncio import sleep
 
 import aiohttp
 from quart import flash, request, url_for, redirect, current_app, render_template
-from quart_auth import login_user, logout_user, current_user, login_required
+from quart_auth import login_user, logout_user, current_user as _current_user, login_required
 from quart.typing import ResponseReturnValue
 
 from utils.mail import send_email
 from utils.forms import Login, Reset, Delete, Register, ResetPassword
 from utils.models import User
+
+current_user: User = _current_user  # type: ignore[assignment]
 from utils.tokens import generate_token, validate_token
 from utils.factory import bcrypt, docker, schema
 from library.helpers import capture_event
@@ -27,16 +27,16 @@ async def _register() -> ResponseReturnValue:
     Returns:
         ResponseReturnValue: Redirect to the appropriate page after registration or rendering the registration template.
     """
-    form = await Register().create_form()
+    form: Register = await Register().create_form()  # type: ignore[assignment]
 
     if await current_user.is_authenticated:
         return redirect(url_for("wallet._dashboard"))
 
     if await form.validate_on_submit():
-        user = User(username=form.username.data)
+        user = User(username=form.username.data)  # type: ignore[arg-type]
         try:
             await user.load()
-            await flash("This email is already registered.", "warning")
+            await flash("This username is already registered.", "warning")
             return redirect(url_for("auth._login"))
 
         except ValueError:
@@ -46,13 +46,13 @@ async def _register() -> ResponseReturnValue:
             async with session.get(
                 f"https://block-temporary-email.com/check/email/{form.email.data}",
                 headers={
-                    "x-api-key": current_app.config.get("TEMP_MAIL_BLOCK_API_KEY")
+                    "x-api-key": str(current_app.config.get("TEMP_MAIL_BLOCK_API_KEY", ""))
                 },
             ) as res:
                 if res.status != 200:
                     pass
 
-                if (await res.json())["temporary"]:
+                elif (await res.json())["temporary"]:
                     await flash(
                         "Registrations with temporary disposable emails are not allowed.",
                         "error",
@@ -87,9 +87,9 @@ async def _register() -> ResponseReturnValue:
                 "auth/register.html", form=form, scroll=True
             )
 
-        user = User(username=form.username.data)
-        user.email = form.email.data
-        user.password = bcrypt.generate_password_hash(form.password.data).decode(
+        user = User(username=form.username.data)  # type: ignore[arg-type]
+        user.email = form.email.data  # type: ignore[assignment]
+        user.password = bcrypt.generate_password_hash(form.password.data).decode(  # type: ignore[arg-type]
             "utf8"
         )
         await user.save()
@@ -127,10 +127,10 @@ async def _confirm(token: str) -> ResponseReturnValue:
     email = validate_token(token)
 
     try:
-        user = await User.get_by_email(email)
-
         if not email:
             raise ValueError
+
+        user = await User.get_by_email(email)
 
     except ValueError:
         await flash(
@@ -143,7 +143,7 @@ async def _confirm(token: str) -> ResponseReturnValue:
 
     else:
         user.confirmed = True
-        user.confirmed_on = datetime.datetime.now()
+        user.confirmed_at = datetime.datetime.now(datetime.UTC)
         await user.save()
 
         await capture_event(user.username, "confirmed")
@@ -195,13 +195,13 @@ async def _login() -> ResponseReturnValue:
     Returns:
         ResponseReturnValue: Redirect to the dashboard after successful login or the login page with an error message.
     """
-    form = await Login().create_form()
+    form: Login = await Login().create_form()  # type: ignore[assignment]
 
     if await current_user.is_authenticated:
         return redirect(url_for("wallet._setup"))
 
     if await form.validate_on_submit():
-        user = User(username=form.username.data)
+        user = User(username=form.username.data)  # type: ignore[arg-type]
 
         try:
             await user.load()
@@ -210,7 +210,7 @@ async def _login() -> ResponseReturnValue:
             await flash("Invalid username or password.", "error")
             return redirect(url_for("auth._login"))
 
-        if not bcrypt.check_password_hash(user.password, form.password.data):
+        if not bcrypt.check_password_hash(user.password, form.password.data):  # type: ignore[arg-type]
             await flash("Invalid username or password.", "error")
             return redirect(url_for("auth._login"))
 
@@ -249,11 +249,11 @@ async def _reset() -> ResponseReturnValue:
     Returns:
         ResponseReturnValue: Redirect to the index page after sending the reset link or renders the reset page.
     """
-    form = await Reset().create_form()
+    form: Reset = await Reset().create_form()  # type: ignore[assignment]
 
     if await form.validate_on_submit():
         try:
-            user = await User.get_by_email(form.email.data)
+            user = await User.get_by_email(form.email.data)  # type: ignore[arg-type]
 
         except ValueError:
             await flash("No such email exists in our database.", "error")
@@ -299,16 +299,16 @@ async def _reset_token(token: str) -> ResponseReturnValue:
         await flash(
             "The reset password link is either invalid or has expired.", "error"
         )
+        return redirect(url_for("auth._login"))
 
-    form = await ResetPassword().create_form()
+    form: ResetPassword = await ResetPassword().create_form()  # type: ignore[assignment]
 
     if await form.validate_on_submit():
         if not form.password.data == form.confirm_password.data:
             await flash("The passwords do not match.", "warning")
             return redirect(request.url)
-
         user = await User.get_by_email(email)
-        user.password = bcrypt.generate_password_hash(form.password.data).decode(
+        user.password = bcrypt.generate_password_hash(form.password.data).decode(  # type: ignore[arg-type]
             "utf8"
         )
         await user.save()
@@ -329,7 +329,7 @@ async def _delete() -> ResponseReturnValue:
     Returns:
         ResponseReturnValue: Redirects to the wallet setup page after deletion or renders the dashboard with a confirmation request.
     """
-    form = await Delete().create_form()
+    form: Delete = await Delete().create_form()  # type: ignore[assignment]
 
     if await form.validate_on_submit():
         docker.stop_container(current_user.wallet_container)

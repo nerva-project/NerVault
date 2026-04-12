@@ -59,14 +59,14 @@ async def _privacy() -> ResponseReturnValue:
 @meta_bp.route("/status", methods=["GET"])
 async def _status() -> ResponseReturnValue:
     """
-    Returns the system status, including the health of the valkey, MongoDB, and Docker.
+    Returns the system status, including the health of the Redis, MongoDB, and Docker.
 
     Returns:
-        ResponseReturnValue: A JSON response with the status of valkey, MongoDB, and Docker.
+        ResponseReturnValue: A JSON response with the status of Redis, MongoDB, and Docker.
     """
     return jsonify(
         {
-            "valkey": (await cache.valkey.ping()),
+            "redis": (await cache.redis.ping()),  # type: ignore[misc]
             "mongodb": (await db.client.admin.command("ping")) == {"ok": 1.0},
             "docker": Docker().client.ping(),
         }

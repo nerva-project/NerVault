@@ -1,11 +1,13 @@
-from __future__ import annotations
-
 from typing import Any, Callable
 
 from functools import wraps
 
 from quart import flash, url_for, redirect, current_app
-from quart_auth import current_user
+from quart_auth import current_user as _current_user
+
+from utils.models import User
+
+current_user: User = _current_user  # type: ignore[assignment]
 
 
 def check_confirmed(func: Callable[..., Any]) -> Callable[..., Any]:
@@ -24,7 +26,7 @@ def check_confirmed(func: Callable[..., Any]) -> Callable[..., Any]:
     """
 
     @wraps(func)
-    async def wrapper(*args: tuple, **kwargs: dict) -> Any:
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
         if current_user.confirmed is False:
             await flash("Please confirm your account first.", "warning")
             return redirect(url_for("auth._unconfirmed"))

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from re import match
 
 from wtforms import StringField, BooleanField
@@ -162,8 +160,11 @@ class Restore(QuartForm):
         render_kw={"class": "form-control-span"},
     )
 
-    def validate_seed(self, _):
+    def validate_seed(self, _: object) -> None:
         """Validate that the seed phrase is in the correct format."""
+
+        if not self.seed.data:
+            raise ValidationError("Seed phrase is required")
 
         regex = "^[\\w\\s]+$"
 

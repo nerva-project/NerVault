@@ -1,10 +1,6 @@
-from __future__ import annotations
-
 from typing import Any, Dict
 
 from decimal import Decimal
-
-from six import integer_types
 
 PICO_XNV = Decimal("0.000000000001")
 
@@ -22,7 +18,7 @@ def to_atomic(amount: Decimal) -> int:
     Raises:
         ValueError: If the provided amount is not of a numeric type (Decimal, int, or float).
     """
-    if not isinstance(amount, (Decimal, float) + integer_types):
+    if not isinstance(amount, (Decimal, float, int)):
         raise ValueError(
             f"Amount '{amount}' doesn't have numeric type. Only Decimal, int, long and "
             "float (not recommended) are accepted as amounts."

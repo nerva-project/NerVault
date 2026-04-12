@@ -8,12 +8,15 @@ from datetime import UTC, datetime
 
 from PIL import Image
 from quart import flash, jsonify, request, url_for, redirect, render_template
-from quart_auth import current_user, login_required
+from quart_auth import current_user as _current_user, login_required
 from qrcode.main import QRCode
 from quart.typing import ResponseReturnValue
 from qrcode.constants import ERROR_CORRECT_H
 
 from library.rpc import Wallet
+from utils.models import User
+
+current_user: User = _current_user  # type: ignore[assignment]
 from utils.forms import Send, Delete, Restore, Secrets
 from utils.tokens import generate_token, validate_token
 from library.utils import to_atomic, sort_transactions
@@ -37,7 +40,7 @@ async def _setup() -> ResponseReturnValue:
         return redirect(url_for("wallet._dashboard"))
 
     else:
-        restore_form = await Restore().create_form()
+        restore_form: Restore = await Restore().create_form()  # type: ignore[assignment]
 
         if await restore_form.validate_on_submit():
             c = await docker.create_wallet(
@@ -105,15 +108,15 @@ async def _dashboard() -> ResponseReturnValue:
         password=current_user.wallet_password,
     )
 
-    if not docker.container_exists(current_user.wallet_container):
+    if not current_user.wallet_container or not docker.container_exists(current_user.wallet_container):
         await current_user.clear_wallet_data()
         return redirect(url_for("wallet._loading"))
 
     if not await wallet.connected:
         return redirect(url_for("wallet._loading"))
 
-    send_form = await Send().create_form()
-    delete_form = await Delete().create_form()
+    send_form: Send = await Send().create_form()  # type: ignore[assignment]
+    delete_form: Delete = await Delete().create_form()  # type: ignore[assignment]
 
     address = await wallet.get_address()
 
@@ -130,7 +133,7 @@ async def _dashboard() -> ResponseReturnValue:
     qr.add_data(uri)
     qr.make(fit=True)
 
-    qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGBA")
+    qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGBA")  # type: ignore[union-attr]
 
     logo = Image.open("assets/img/nerva-qr.png").convert("RGBA")
     logo_size = 256
@@ -180,7 +183,7 @@ async def _dashboard() -> ResponseReturnValue:
         )
 
     else:
-        secrets_form = await Secrets().create_form()
+        secrets_form: Secrets = await Secrets().create_form()  # type: ignore[assignment]
 
         return await render_template(
             "wallet/dashboard.html",
@@ -222,7 +225,7 @@ async def _connect() -> ResponseReturnValue:
         current_user.wallet_connected = docker.container_exists(wallet)
         current_user.wallet_port = port
         current_user.wallet_container = wallet
-        current_user.wallet_start = datetime.now(UTC)
+        current_user.wallet_started_at = datetime.now(UTC)
         await current_user.save()
 
         await capture_event(current_user.username, "start_wallet")
@@ -293,7 +296,7 @@ async def _status() -> ResponseReturnValue:
             "port": current_user.wallet_port,
             "container": current_user.wallet_container,
             "volume": docker.volume_exists(user_vol),
-            "initializing": docker.container_exists(create_container),
+            "initializing": docker.container_exists(create_container) if create_container else False,
             "ready": wallet_ready,
         }
     )
@@ -309,11 +312,11 @@ async def _secrets() -> ResponseReturnValue:
     Returns:
         ResponseReturnValue: A redirect to the dashboard with the secrets token or errors.
     """
-    secrets_form = await Secrets().create_form()
+    secrets_form: Secrets = await Secrets().create_form()  # type: ignore[assignment]
 
     if await secrets_form.validate_on_submit():
         password_matches = bcrypt.check_password_hash(
-            current_user.password, secrets_form.password.data
+            current_user.password, secrets_form.password.data  # type: ignore[arg-type]
         )
 
         if not password_matches:
@@ -328,6 +331,8 @@ async def _secrets() -> ResponseReturnValue:
                 + "#secrets"
             )
 
+    return redirect(url_for("wallet._dashboard") + "#secrets")
+
 
 @wallet_bp.route("/wallet/send", methods=["GET", "POST"])
 @login_required
@@ -339,7 +344,7 @@ async def _send() -> ResponseReturnValue:
     Returns:
         ResponseReturnValue: A redirect to the dashboard with the result of the transaction.
     """
-    send_form = await Send().create_form()
+    send_form: Send = await Send().create_form()  # type: ignore[assignment]
 
     redirect_url = url_for("wallet._dashboard") + "#send"
 
@@ -354,7 +359,7 @@ async def _send() -> ResponseReturnValue:
 
     if await send_form.validate_on_submit():
         address = str(send_form.address.data)
-        payment_id = str(send_form.payment_id.data) or None
+        payment_id = send_form.payment_id.data or None
 
         if await wallet.connected is False:
             await flash(
@@ -374,7 +379,7 @@ async def _send() -> ResponseReturnValue:
 
         else:
             try:
-                amount = to_atomic(Decimal(send_form.amount.data))
+                amount = to_atomic(Decimal(send_form.amount.data))  # type: ignore[arg-type]
 
             except ValueError:
                 await flash("Invalid Nerva amount specified.", "error")
@@ -383,8 +388,10 @@ async def _send() -> ResponseReturnValue:
 
             if (
                 payment_id
-                and not len(payment_id) in [16, 32]
-                and not all(c in string.hexdigits for c in payment_id)
+                and (
+                    len(payment_id) not in [16, 32]
+                    or not all(c in string.hexdigits for c in payment_id)
+                )
             ):
                 await flash("Invalid payment ID specified.", "error")
                 return redirect(redirect_url)

@@ -88,7 +88,7 @@
                 <button id="stopVideo">Cancel</button>
             </div>
 
-            <form class="form-slim" method="POST" action="{{ url_for('wallet._send') }}" class="send-form">
+            <form class="form-slim send-form" method="POST" action="{{ url_for('wallet._send') }}">
                 {{ send_form.csrf_token }}
                 <div class="form-group">
                     {{ send_form.address.label }}
@@ -170,7 +170,7 @@
     </div>
 </section>
 
-<section class="section2" id="send">
+<section class="section2" id="reset">
     <div class="container-slim">
         <div class="section-heading text-center">
             <h2>Reset Account</h2>
@@ -199,7 +199,7 @@
                             type: 'error',
                             theme: 'bootstrap-v4',
                             layout: 'topCenter',
-                            text: '{{ send_form[field].label }}: {{ ', '.join(errors) }}',
+                            text: '{{ delete_form[field].label }}: {{ ', '.join(errors) }}',
                             timeout: 5000
                         }).show();
                     </script>

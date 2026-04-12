@@ -1,9 +1,7 @@
-from __future__ import annotations
-
 from typing import Optional
 
 import sys
-from time import sleep
+import asyncio
 from os.path import expanduser
 from secrets import token_hex
 from datetime import UTC, datetime, timedelta
@@ -140,6 +138,7 @@ class Docker:
             if str(e).startswith("409"):
                 container = self.client.containers.get(container_name)
                 return container.short_id
+            raise
 
     def get_port(self, container_id: str) -> int:
         """
@@ -188,14 +187,14 @@ class Docker:
         except (NotFound, NullResource):
             return False
 
-    def stop_container(self, container_id: str) -> None:
+    def stop_container(self, container_id: Optional[str]) -> None:
         """
         Stops a running container.
 
         Args:
             container_id (str): The ID of the container.
         """
-        if self.container_exists(container_id):
+        if container_id and self.container_exists(container_id):
             c: Container = self.client.containers.get(container_id)
             c.stop()
 
@@ -211,11 +210,8 @@ class Docker:
         """
         volume_name = self.get_user_volume(user_id)
         volume: Volume = self.client.volumes.get(volume_name)
-        try:
-            volume.remove()
-            return True
-        except Exception as e:
-            raise e
+        volume.remove()
+        return True
 
     @staticmethod
     def get_user_volume(user_id: str) -> str:
@@ -242,7 +238,10 @@ class Docker:
 
             if u.wallet_started_at:
                 session_lifetime: int = config.PERMANENT_SESSION_LIFETIME
-                expiration_time: datetime = u.wallet_started_at + timedelta(
+                wallet_started: datetime = u.wallet_started_at
+                if wallet_started.tzinfo is None:
+                    wallet_started = wallet_started.replace(tzinfo=UTC)
+                expiration_time: datetime = wallet_started + timedelta(
                     seconds=session_lifetime
                 )
                 now: datetime = datetime.now(UTC)
@@ -250,7 +249,7 @@ class Docker:
                 if time_diff.total_seconds() <= 0:
                     print(f"Found expired container for {u}. Killing...")
                     self.stop_container(u.wallet_container)
-                    sleep(2)
+                    await asyncio.sleep(2)
 
             if u.wallet_container and not self.container_exists(u.wallet_container):
                 print(f"Found stale data for {u}. Deleting...")

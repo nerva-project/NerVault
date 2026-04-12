@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from quart import Blueprint
 
 # Blueprint for wallet-related routes

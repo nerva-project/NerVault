@@ -3,14 +3,13 @@ SECRET_KEY = "secret_key"
 PASSWORD_SALT = "password_salt"
 
 # MongoDB
-MONGO_HOST = "localhost"
-MONGO_PORT = 27017
-MONGO_USERNAME = "root"
+from urllib.parse import quote_plus
 MONGO_PASSWORD = "password"
+MONGO_URI = f"mongodb+srv://user:{quote_plus(MONGO_PASSWORD)}@cluster.mongodb.net/?retryWrites=true&w=majority"
 MONGO_DB = "database_name"
 
-# Valkey
-VALKEY_URL = "valkey://localhost:6379/0"
+# Redis
+REDIS_URL = "redis://:password@host:port/0"
 
 # Docker
 WALLET_DIR = "./data/wallets"
@@ -41,5 +40,6 @@ COINGECKO_API_KEY = "coingecko_api_key"
 TEMP_MAIL_BLOCK_API_KEY = "temp_mail_block_api_key"
 
 # Development
+DEBUG = False
 TEMPLATES_AUTO_RELOAD = False
 QUART_AUTH_COOKIE_SECURE = True

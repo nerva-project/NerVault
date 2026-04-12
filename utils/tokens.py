@@ -1,6 +1,4 @@
-from __future__ import annotations
-
-from typing import Union
+from typing import Optional
 
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
@@ -21,7 +19,7 @@ def generate_token(email_id: str) -> str:
     return serializer.dumps(email_id, salt=config.PASSWORD_SALT)
 
 
-def validate_token(token: str, expiration: int = 3600) -> Union[bool, str]:
+def validate_token(token: str, expiration: int = 3600) -> Optional[str]:
     """
     Validates the given token and returns the email ID if valid, otherwise returns False.
 
@@ -40,6 +38,6 @@ def validate_token(token: str, expiration: int = 3600) -> Union[bool, str]:
         )
 
     except BadSignature:
-        return False
+        return None
 
-    return email_id
+    return str(email_id)

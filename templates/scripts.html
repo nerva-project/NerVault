@@ -42,32 +42,32 @@
                 if (password.value.length >= 8 && ((password.value.match(regExpWeak) && password.value.match(regExpMedium)) || (password.value.match(regExpMedium) && password.value.match(regExpStrong)) || (password.value.match(regExpWeak) && password.value.match(regExpStrong)))) type = 2;
                 if (password.value.length >= 8 && password.value.match(regExpWeak) && password.value.match(regExpMedium) && password.value.match(regExpStrong)) type = 3;
 
+                weak.classList.remove("active");
+                medium.classList.remove("active");
+                strong.classList.remove("active");
+                text.classList.remove("weak", "medium", "strong");
+
                 if (type === 1) {
                     weak.classList.add("active");
                     text.style.display = "block";
                     text.textContent = "Your password is too weak";
                     text.classList.add("weak");
                     button.disabled = true;
-                }
-                if (type === 2) {
+                } else if (type === 2) {
+                    weak.classList.add("active");
                     medium.classList.add("active");
+                    text.style.display = "block";
                     text.textContent = "Your password is not that strong";
                     text.classList.add("medium");
                     button.disabled = true;
-                } else {
-                    medium.classList.remove("active");
-                    text.classList.remove("medium");
-                }
-                if (type === 3) {
+                } else if (type === 3) {
                     weak.classList.add("active");
                     medium.classList.add("active");
                     strong.classList.add("active");
+                    text.style.display = "block";
                     text.textContent = "Your password is strong";
                     text.classList.add("strong");
                     button.disabled = false;
-                } else {
-                    strong.classList.remove("active");
-                    text.classList.remove("strong");
                 }
             } else {
                 indicator.style.display = "none";
@@ -85,7 +85,7 @@
                 .then((resp) => resp.json())
                 .then(function (data) {
                     if (data['created'] && data['volume'] && data['connected'] === false && data['initializing'] === false) {
-                        fetch('/wallet/connect')
+                        fetch('/wallet/connect').catch((err) => console.error('Failed to connect wallet:', err));
                     }
 
                     if (data['created'] && data['volume'] && data['connected'] && data['ready']) {
@@ -152,7 +152,7 @@
             return {
                 display: true,
                 text: t,
-                fontColor: 'white',
+                color: 'white',
             }
         };
 

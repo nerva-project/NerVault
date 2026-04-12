@@ -31,9 +31,7 @@ def main() -> None:
     """
     Main function to run the app
     """
-    app.run(
-        host="0.0.0.0", port=17569, loop=loop
-    )  # , certfile="cert.pem", keyfile="key.pem")
+    app.run(host="localhost", port=5000, loop=loop)
 
 
 if __name__ == "__main__":

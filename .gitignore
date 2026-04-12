@@ -134,5 +134,3 @@ dmypy.json
 
 # NerVault
 config.py
-data
-uv.lock

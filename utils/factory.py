@@ -1,19 +1,20 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Optional
 
 import sys
 import asyncio
 from datetime import datetime
-from urllib.parse import quote_plus
 
 import click
-import motor.motor_asyncio
+from pymongo.asynchronous.mongo_client import AsyncMongoClient
+from pymongo.asynchronous.database import AsyncDatabase
 from quart import Quart, flash, request, url_for, redirect
+from quart.typing import ResponseReturnValue
 from quart_wtf import CSRFProtect
 from aiosmtplib import SMTP, SMTPException
 from quart_auth import QuartAuth, Unauthorized, current_user
-from nerva.daemon import DaemonLegacy
+from nerva.daemon import DaemonHTTP
 from quart_bcrypt import Bcrypt
 from dateutil.parser import parse
 from password_validator import PasswordValidator
@@ -26,8 +27,8 @@ if TYPE_CHECKING:
 bcrypt: Bcrypt
 cache: Cache
 csrf: CSRFProtect
-daemon: DaemonLegacy
-db: motor.motor_asyncio.AsyncIOMotorDatabase
+daemon: DaemonHTTP
+db: AsyncDatabase[Any]
 docker: Docker
 schema: PasswordValidator
 
@@ -80,16 +81,13 @@ async def create_app() -> Quart:
     csrf.init_app(app)
 
     # Set up Daemon connection (Nerva)
-    daemon = DaemonLegacy(
+    daemon = DaemonHTTP(
         host=app.config["DAEMON_HOST"],
         port=app.config["DAEMON_PORT"],
     )
 
-    # Connect to MongoDB using Motor async driver
-    db = motor.motor_asyncio.AsyncIOMotorClient(
-        f"mongodb://{quote_plus(app.config['MONGO_USERNAME'])}:{quote_plus(app.config['MONGO_PASSWORD'])}@"
-        f"{app.config['MONGO_HOST']}:{app.config['MONGO_PORT']}"
-    )[app.config["MONGO_DB"]]
+    # Connect to MongoDB using pymongo async driver
+    db = AsyncMongoClient(app.config["MONGO_URI"])[app.config["MONGO_DB"]]
 
     # Initialize Docker client
     from library.docker import Docker
@@ -127,7 +125,7 @@ async def create_app() -> Quart:
     async with app.app_context():
         from utils.models import User
 
-        auth_manager.user_class = User
+        auth_manager.user_class = User  # type: ignore[assignment]
 
         # Template filters
         @app.template_filter("datestamp")
@@ -173,22 +171,22 @@ async def create_app() -> Quart:
 
             amount = from_atomic(a)
             return (
-                0 if amount == 0 else format(amount, ".10f").rstrip("0").rstrip(".")
+                "0" if amount == 0 else format(amount, ".10f").rstrip("0").rstrip(".")
             )
 
         # Before request hooks
         @app.before_request
-        async def _load_user_data():
+        async def _load_user_data() -> None:
             """
             Loads the current user data if available before each request.
             """
             try:
-                await current_user.load()
+                await current_user.load()  # type: ignore[attr-defined]
             except ValueError:
                 pass
 
         @app.before_request
-        async def _check_maintenance():
+        async def _check_maintenance() -> Optional[ResponseReturnValue]:
             """
             Checks if the app is in maintenance mode before processing a request.
             Redirects to maintenance page if the app is in maintenance mode.
@@ -196,22 +194,25 @@ async def create_app() -> Quart:
             from library.helpers import on_maintenance
 
             if request.endpoint in ["meta._maintenance", "static"]:
-                return
+                return None
 
             if await on_maintenance():
                 return redirect(url_for("meta._maintenance"))
 
+            return None
+
+        # Background task: clean up stale/expired wallet containers every hour
+        @app.before_serving
+        async def _start_cleanup_loop() -> None:
+            async def _cleanup_loop() -> None:
+                while True:
+                    await asyncio.sleep(3600)
+                    await docker.cleanup()
+                    print("[INFO] Cleaned up expired wallet containers")
+
+            asyncio.ensure_future(_cleanup_loop())
+
         # CLI commands
-        @app.cli.command("clean_containers")
-        def _clean_containers() -> None:
-            """Cleans up Docker containers."""
-
-            async def __clean_containers() -> None:
-                await docker.cleanup()
-                print("[INFO] Cleaned up expired wallet containers")
-
-            asyncio.get_event_loop().run_until_complete(__clean_containers())
-
         @app.cli.command("reset_wallet")
         @click.argument("username")
         def _reset_wallet(username: str) -> None:
@@ -223,7 +224,7 @@ async def create_app() -> Quart:
             """
 
             async def __reset_wallet() -> None:
-                from models import User
+                from utils.models import User
 
                 user = User(username=username)
                 await user.clear_wallet_data()
@@ -264,7 +265,7 @@ async def create_app() -> Quart:
 
         # Error handling
         @app.errorhandler(Unauthorized)
-        async def _redirect_to_login(*_):
+        async def _redirect_to_login(*_: Any) -> ResponseReturnValue:
             """Redirects the user to the login page in case of Unauthorized access."""
             await flash("You need to log in to access this page", "warning")
             return redirect(url_for("auth._login"))

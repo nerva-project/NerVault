@@ -1,19 +1,20 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from quart_auth import AuthUser
 
 from utils.factory import db
 
 if TYPE_CHECKING:
-    from motor.motor_asyncio import AsyncIOMotorCursor, AsyncIOMotorCollection
+    from pymongo.asynchronous.collection import AsyncCollection
+    from pymongo.asynchronous.cursor import AsyncCursor
 
 
 class User(AuthUser):
-    collection: AsyncIOMotorCollection = db.get_collection("users")
+    collection: AsyncCollection[Any] = db.get_collection("users")
 
     def __init__(self, username: str) -> None:
         """
@@ -27,15 +28,15 @@ class User(AuthUser):
         self.username: str = username
         self.email: str = ""
         self.password: str = ""
-        self.register_date: datetime = datetime.now()
+        self.register_date: datetime = datetime.now(UTC)
         self.confirmed: bool = False
         self.confirmed_at: datetime = datetime.fromtimestamp(0)
-        self.wallet_password: str = ""
+        self.wallet_password: Optional[str] = ""
         self.wallet_created: bool = False
         self.wallet_connected: bool = False
         self.wallet_port: Optional[int] = 0
-        self.wallet_container: str = ""
-        self.wallet_started_at: datetime = datetime.fromtimestamp(0)
+        self.wallet_container: Optional[str] = None
+        self.wallet_started_at: Optional[datetime] = datetime.fromtimestamp(0, UTC)
 
     def __repr__(self) -> str:
         """
@@ -166,7 +167,7 @@ class User(AuthUser):
         return u
 
     @staticmethod
-    async def get_all() -> AsyncIOMotorCursor:
+    async def get_all() -> AsyncCursor[Any]:
         """
         Retrieves all users from the database.
 
@@ -177,7 +178,7 @@ class User(AuthUser):
 
 
 class Event:
-    collection: AsyncIOMotorCollection = db.get_collection("events")
+    collection: AsyncCollection[Any] = db.get_collection("events")
 
     def __init__(self, category: str, user: str) -> None:
         """
@@ -189,7 +190,7 @@ class Event:
         """
         self.category: str = category
         self.user: str = user
-        self.date: datetime = datetime.today()
+        self.date: datetime = datetime.now(UTC)
 
     async def save(self) -> None:
         """
@@ -201,7 +202,7 @@ class Event:
 
 
 class Config:
-    collection: AsyncIOMotorCollection = db.get_collection("config")
+    collection: AsyncCollection[Any] = db.get_collection("config")
 
     def __init__(self, key: str, value: Optional[bool] = None) -> None:
         """
