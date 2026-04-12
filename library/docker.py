@@ -60,7 +60,7 @@ class Docker:
                     --generate-new-wallet /wallet/{u.username}.wallet \
                     --restore-height 0 \
                     --password {u.wallet_password} \
-                    --daemon-address {'https' if config.DAEMON_SSL else 'http'}://{config.DAEMON_HOST}:{config.DAEMON_PORT} \
+                    --daemon-address {"https" if config.DAEMON_SSL else "http"}://{config.DAEMON_HOST}:{config.DAEMON_PORT} \
                     --daemon-login {config.DAEMON_USERNAME}:{config.DAEMON_PASSWORD} \
                     --trusted-daemon \
                     --electrum-seed '{seed}' \
@@ -73,7 +73,7 @@ class Docker:
                     --restore-height {(await daemon.get_info())["height"]} \
                     --password {u.wallet_password} \
                     --mnemonic-language English \
-                    --daemon-address {'https' if config.DAEMON_SSL else 'http'}://{config.DAEMON_HOST}:{config.DAEMON_PORT} \
+                    --daemon-address {"https" if config.DAEMON_SSL else "http"}://{config.DAEMON_HOST}:{config.DAEMON_PORT} \
                     --daemon-login {config.DAEMON_USERNAME}:{config.DAEMON_PASSWORD} \
                     --trusted-daemon \
                     --log-file /wallet/{u.username}-init.log \
@@ -116,7 +116,7 @@ class Docker:
         --wallet-file /wallet/{u.username}.wallet \
         --rpc-login {u.username}:{u.wallet_password} \
         --password {u.wallet_password} \
-        --daemon-address {'https' if config.DAEMON_SSL else 'http'}://{config.DAEMON_HOST}:{config.DAEMON_PORT} \
+        --daemon-address {"https" if config.DAEMON_SSL else "http"}://{config.DAEMON_HOST}:{config.DAEMON_PORT} \
         --daemon-login {config.DAEMON_USERNAME}:{config.DAEMON_PASSWORD} \
         --trusted-daemon \
         --log-file /wallet/{u.username}-rpc.log

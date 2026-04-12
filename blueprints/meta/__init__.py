@@ -4,4 +4,4 @@ from quart import Blueprint
 meta_bp: Blueprint = Blueprint("meta", __name__)
 
 # Import routes for the 'meta' blueprint
-from . import routes
+from . import routes as routes  # noqa: E402

@@ -154,7 +154,9 @@ class Wallet:
         Returns:
             bool: True if integrated, False otherwise.
         """
-        return (await self.rpc.validate_address(address=address))["result"]["integrated"]  # type: ignore[no-any-return]
+        return (await self.rpc.validate_address(address=address))["result"][  # type: ignore[no-any-return]
+            "integrated"
+        ]
 
     async def get_address(self, account_index: int = 0) -> str:
         """

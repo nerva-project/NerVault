@@ -3,7 +3,8 @@ SECRET_KEY = "secret_key"
 PASSWORD_SALT = "password_salt"
 
 # MongoDB
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus  # noqa: E402
+
 MONGO_PASSWORD = "password"
 MONGO_URI = f"mongodb+srv://user:{quote_plus(MONGO_PASSWORD)}@cluster.mongodb.net/?retryWrites=true&w=majority"
 MONGO_DB = "database_name"

@@ -4,4 +4,4 @@ from quart import Blueprint
 wallet_bp: Blueprint = Blueprint("wallet", __name__)
 
 # Import routes for the 'wallet' blueprint
-from . import routes
+from . import routes as routes  # noqa: E402

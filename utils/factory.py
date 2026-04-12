@@ -7,17 +7,17 @@ import asyncio
 from datetime import datetime
 
 import click
-from pymongo.asynchronous.mongo_client import AsyncMongoClient
-from pymongo.asynchronous.database import AsyncDatabase
 from quart import Quart, flash, request, url_for, redirect
-from quart.typing import ResponseReturnValue
 from quart_wtf import CSRFProtect
 from aiosmtplib import SMTP, SMTPException
 from quart_auth import QuartAuth, Unauthorized, current_user
 from nerva.daemon import DaemonHTTP
+from quart.typing import ResponseReturnValue
 from quart_bcrypt import Bcrypt
 from dateutil.parser import parse
 from password_validator import PasswordValidator
+from pymongo.asynchronous.database import AsyncDatabase
+from pymongo.asynchronous.mongo_client import AsyncMongoClient
 
 if TYPE_CHECKING:
     from library.cache import Cache
@@ -171,7 +171,9 @@ async def create_app() -> Quart:
 
             amount = from_atomic(a)
             return (
-                "0" if amount == 0 else format(amount, ".10f").rstrip("0").rstrip(".")
+                "0"
+                if amount == 0
+                else format(amount, ".10f").rstrip("0").rstrip(".")
             )
 
         # Before request hooks

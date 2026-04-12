@@ -5,17 +5,22 @@ from asyncio import sleep
 
 import aiohttp
 from quart import flash, request, url_for, redirect, current_app, render_template
-from quart_auth import login_user, logout_user, current_user as _current_user, login_required
+from quart_auth import (
+    login_user,
+    logout_user,
+    current_user as _current_user,
+    login_required,
+)
 from quart.typing import ResponseReturnValue
 
 from utils.mail import send_email
 from utils.forms import Login, Reset, Delete, Register, ResetPassword
 from utils.models import User
-
-current_user: User = _current_user  # type: ignore[assignment]
 from utils.tokens import generate_token, validate_token
 from utils.factory import bcrypt, docker, schema
 from library.helpers import capture_event
+
+current_user: User = _current_user  # type: ignore[assignment]
 
 
 @auth_bp.route("/register", methods=["GET", "POST"])
@@ -46,7 +51,9 @@ async def _register() -> ResponseReturnValue:
             async with session.get(
                 f"https://block-temporary-email.com/check/email/{form.email.data}",
                 headers={
-                    "x-api-key": str(current_app.config.get("TEMP_MAIL_BLOCK_API_KEY", ""))
+                    "x-api-key": str(
+                        current_app.config.get("TEMP_MAIL_BLOCK_API_KEY", "")
+                    )
                 },
             ) as res:
                 if res.status != 200:

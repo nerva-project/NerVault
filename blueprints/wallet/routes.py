@@ -8,21 +8,24 @@ from datetime import UTC, datetime
 
 from PIL import Image
 from quart import flash, jsonify, request, url_for, redirect, render_template
-from quart_auth import current_user as _current_user, login_required
+from quart_auth import (
+    current_user as _current_user,
+    login_required,
+)
 from qrcode.main import QRCode
 from quart.typing import ResponseReturnValue
 from qrcode.constants import ERROR_CORRECT_H
 
 from library.rpc import Wallet
-from utils.models import User
-
-current_user: User = _current_user  # type: ignore[assignment]
 from utils.forms import Send, Delete, Restore, Secrets
+from utils.models import User
 from utils.tokens import generate_token, validate_token
 from library.utils import to_atomic, sort_transactions
 from utils.factory import cache, bcrypt, docker
 from library.helpers import capture_event
 from utils.decorators import check_confirmed
+
+current_user: User = _current_user  # type: ignore[assignment]
 
 
 @wallet_bp.route("/wallet/setup", methods=["GET", "POST"])
@@ -108,7 +111,9 @@ async def _dashboard() -> ResponseReturnValue:
         password=current_user.wallet_password,
     )
 
-    if not current_user.wallet_container or not docker.container_exists(current_user.wallet_container):
+    if not current_user.wallet_container or not docker.container_exists(
+        current_user.wallet_container
+    ):
         await current_user.clear_wallet_data()
         return redirect(url_for("wallet._loading"))
 
@@ -296,7 +301,9 @@ async def _status() -> ResponseReturnValue:
             "port": current_user.wallet_port,
             "container": current_user.wallet_container,
             "volume": docker.volume_exists(user_vol),
-            "initializing": docker.container_exists(create_container) if create_container else False,
+            "initializing": docker.container_exists(create_container)
+            if create_container
+            else False,
             "ready": wallet_ready,
         }
     )
@@ -316,7 +323,8 @@ async def _secrets() -> ResponseReturnValue:
 
     if await secrets_form.validate_on_submit():
         password_matches = bcrypt.check_password_hash(
-            current_user.password, secrets_form.password.data  # type: ignore[arg-type]
+            current_user.password,
+            secrets_form.password.data,  # type: ignore[arg-type]
         )
 
         if not password_matches:
@@ -386,12 +394,9 @@ async def _send() -> ResponseReturnValue:
                 await capture_event(current_user.username, "tx_fail_amount_invalid")
                 return redirect(redirect_url)
 
-            if (
-                payment_id
-                and (
-                    len(payment_id) not in [16, 32]
-                    or not all(c in string.hexdigits for c in payment_id)
-                )
+            if payment_id and (
+                len(payment_id) not in [16, 32]
+                or not all(c in string.hexdigits for c in payment_id)
             ):
                 await flash("Invalid payment ID specified.", "error")
                 return redirect(redirect_url)

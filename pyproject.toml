@@ -62,5 +62,5 @@ python_version = "3.13"
 strict = true
 
 [[tool.mypy.overrides]]
-module = ["nerva", "nerva.*", "password_validator"]
+module = ["nerva", "nerva.*", "password_validator", "config"]
 ignore_missing_imports = true
