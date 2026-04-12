@@ -24,7 +24,7 @@ jobs:
                 with:
                     python-version-file: ".python-version"
             -   name: Install dependencies
-                run: uv sync --extra dev
+                run: uv sync --all-extras
             -   name: Lint
                 run: uv run ruff check --select I --no-fix .
             -   name: Format
