@@ -9,8 +9,8 @@ from quart_auth import AuthUser
 from utils.factory import db
 
 if TYPE_CHECKING:
-    from pymongo.asynchronous.collection import AsyncCollection
     from pymongo.asynchronous.cursor import AsyncCursor
+    from pymongo.asynchronous.collection import AsyncCollection
 
 
 class User(AuthUser):
