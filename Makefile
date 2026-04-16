@@ -13,7 +13,7 @@ dev:
 	uv run launcher.py
 
 prod:
-	hypercorn --bind 0.0.0.0:17569 --certfile cert.pem --keyfile key.pem launcher:app
+	uv run hypercorn --bind 0.0.0.0:17569 --certfile cert.pem --keyfile key.pem launcher:app
 
 maintenance-enable:
 	QUART_APP=launcher:app uv run quart maintenance enable
