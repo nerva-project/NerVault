@@ -1,4 +1,5 @@
-from utils.models import Event, Config
+from utils.models import Event
+from utils.factory import cache
 
 
 async def capture_event(username: str, category: str) -> None:
@@ -16,13 +17,7 @@ async def on_maintenance() -> bool:
     Returns:
         bool: True if in maintenance mode, False otherwise.
     """
-    try:
-        rec: Config = Config("maintenance")
-        await rec.load()
-        return bool(rec.value)
-
-    except AttributeError:
-        return False
+    return bool(await cache.redis.exists("maintenance"))
 
 
 async def set_maintenance(enable: bool = False) -> None:
@@ -32,5 +27,7 @@ async def set_maintenance(enable: bool = False) -> None:
     Args:
         enable (bool): Whether to enable maintenance mode. Default is False.
     """
-    rec: Config = Config("maintenance", enable)
-    await rec.save()
+    if enable:
+        await cache.redis.set("maintenance", 1)
+    else:
+        await cache.redis.delete("maintenance")
