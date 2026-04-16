@@ -248,8 +248,11 @@ class Docker:
                 time_diff: timedelta = expiration_time - now
                 if time_diff.total_seconds() <= 0:
                     print(f"Found expired container for {u}. Killing...")
-                    self.stop_container(u.wallet_container)
-                    await asyncio.sleep(2)
+                    await asyncio.get_event_loop().run_in_executor(
+                        None, self.stop_container, u.wallet_container
+                    )
+                    await u.clear_wallet_data()
+                    continue
 
             if u.wallet_container and not self.container_exists(u.wallet_container):
                 print(f"Found stale data for {u}. Deleting...")
