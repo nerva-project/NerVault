@@ -13,7 +13,7 @@ dev:
 	uv run launcher.py
 
 prod:
-	uv run hypercorn --bind 0.0.0.0:17569 --certfile cert.pem --keyfile key.pem launcher:app
+	uv run hypercorn --bind 0.0.0.0:17569 launcher:app
 
 maintenance-enable:
 	QUART_APP=launcher:app uv run quart maintenance enable
@@ -26,7 +26,7 @@ reset-wallet:
 	QUART_APP=launcher:app uv run quart reset_wallet $(filter-out $@,$(MAKECMDGOALS))
 
 lint:
-	uv run ruff check --select I --fix .
+	uv run ruff check --fix .
 	uv run ruff format .
 
 typecheck:

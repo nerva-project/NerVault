@@ -1,6 +1,10 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "NerVault"
-version = "1.0.0"
+version = "1.1.0"
 description = "A custodial web wallet for the Nerva (XNV) cryptocurrency."
 license = "GPL-3.0"
 authors = [
@@ -47,6 +51,9 @@ dev = [
 line-length = 85
 target-version = "py313"
 
+[tool.ruff.lint]
+select = ["I"]
+
 [tool.ruff.lint.isort]
 section-order = ["future", "typing", "blueprints", "standard-library", "third-party", "first-party", "local-folder", "config"]
 force-wrap-aliases = true
@@ -57,6 +64,9 @@ length-sort = true
 "typing" = ["typing"]
 "blueprints" = ["blueprints"]
 "config" = ["config"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["blueprints", "library", "utils"]
 
 [tool.mypy]
 python_version = "3.13"

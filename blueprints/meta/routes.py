@@ -1,11 +1,21 @@
 from blueprints.meta import meta_bp
 
+from importlib.metadata import (
+    PackageNotFoundError,
+    version as pkg_version,
+)
+
 from quart import jsonify, url_for, redirect, render_template
 from quart.typing import ResponseReturnValue
 
 from utils.factory import db, cache, daemon
 from library.docker import Docker
 from library.helpers import on_maintenance
+
+try:
+    APP_VERSION = pkg_version("NerVault")
+except PackageNotFoundError:
+    APP_VERSION = "0.0.0"
 
 
 @meta_bp.route("/", methods=["GET"])
@@ -66,6 +76,7 @@ async def _status() -> ResponseReturnValue:
     """
     return jsonify(
         {
+            "version": APP_VERSION,
             "redis": (await cache.redis.ping()),  # type: ignore[misc]
             "mongodb": (await db.client.admin.command("ping")) == {"ok": 1.0},
             "docker": Docker().client.ping(),
