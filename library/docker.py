@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, cast
 
 import sys
 import asyncio
@@ -12,6 +12,7 @@ from docker.models.volumes import Volume
 from docker.models.containers import Container
 
 from utils.models import User
+from library.validation import validate_seed, validate_username
 
 import config
 
@@ -48,43 +49,73 @@ class Docker:
         """
         from utils.factory import daemon
 
+        username = validate_username(username)
+
         u = User(username=username)
         await u.load()
         volume_name = self.get_user_volume(u.username)
-        u.wallet_password = token_hex(8)
+        wallet_password = token_hex(16)
+        u.wallet_password = wallet_password
         await u.save()
 
+        daemon_address = (
+            f"{'https' if config.DAEMON_SSL else 'http'}://"
+            f"{config.DAEMON_HOST}:{config.DAEMON_PORT}"
+        )
+        daemon_login = f"{config.DAEMON_USERNAME}:{config.DAEMON_PASSWORD}"
+
+        entrypoint: list[str]
         if seed:
-            command = f"""sh -c "yes '' | nerva-wallet-cli \
-                    --restore-deterministic-wallet \
-                    --generate-new-wallet /wallet/{u.username}.wallet \
-                    --restore-height 0 \
-                    --password {u.wallet_password} \
-                    --daemon-address {"https" if config.DAEMON_SSL else "http"}://{config.DAEMON_HOST}:{config.DAEMON_PORT} \
-                    --daemon-login {config.DAEMON_USERNAME}:{config.DAEMON_PASSWORD} \
-                    --trusted-daemon \
-                    --electrum-seed '{seed}' \
-                    --log-file /wallet/{u.username}-init.log \
-                    --command refresh"
-                    """
+            seed = validate_seed(seed)
+            script = (
+                'yes "" | nerva-wallet-cli '
+                "--restore-deterministic-wallet "
+                '--generate-new-wallet "/wallet/$1.wallet" '
+                "--restore-height 0 "
+                '--password "$2" '
+                f'--daemon-address "{daemon_address}" '
+                f'--daemon-login "{daemon_login}" '
+                "--trusted-daemon "
+                '--electrum-seed "$3" '
+                '--log-file "/wallet/$1-init.log" '
+                "--command refresh"
+            )
+            entrypoint = [
+                "sh",
+                "-c",
+                script,
+                "sh",
+                u.username,
+                wallet_password,
+                seed,
+            ]
         else:
-            command = f"""nerva-wallet-cli \
-                    --generate-new-wallet /wallet/{u.username}.wallet \
-                    --restore-height {(await daemon.get_info())["height"]} \
-                    --password {u.wallet_password} \
-                    --mnemonic-language English \
-                    --daemon-address {"https" if config.DAEMON_SSL else "http"}://{config.DAEMON_HOST}:{config.DAEMON_PORT} \
-                    --daemon-login {config.DAEMON_USERNAME}:{config.DAEMON_PASSWORD} \
-                    --trusted-daemon \
-                    --log-file /wallet/{u.username}-init.log \
-                    --command version
-                    """
+            entrypoint = [
+                "nerva-wallet-cli",
+                "--generate-new-wallet",
+                f"/wallet/{u.username}.wallet",
+                "--restore-height",
+                str((await daemon.get_info())["height"]),
+                "--password",
+                wallet_password,
+                "--mnemonic-language",
+                "English",
+                "--daemon-address",
+                daemon_address,
+                "--daemon-login",
+                daemon_login,
+                "--trusted-daemon",
+                "--log-file",
+                f"/wallet/{u.username}-init.log",
+                "--command",
+                "version",
+            ]
 
         if not self.volume_exists(volume_name):
             self.client.volumes.create(name=volume_name, driver="local")
         container = self.client.containers.run(
             self.nerva_docker_img,
-            entrypoint=command,
+            entrypoint=entrypoint,
             auto_remove=True,
             name=f"init_wallet_{u.username}",
             remove=True,
@@ -103,34 +134,57 @@ class Docker:
         Returns:
             str: The short ID of the wallet RPC container.
         """
+        username = validate_username(username)
+
         u = User(username=username)
         await u.load()
 
+        if not u.wallet_password:
+            raise ValueError("Wallet password is not set for this user")
+
+        wallet_password = u.wallet_password
         container_name = f"rpc_wallet_{u.username}"
         volume_name = self.get_user_volume(u.username)
-        command = f"""nerva-wallet-rpc \
-        --non-interactive \
-        --rpc-bind-port {self.listen_port} \
-        --rpc-bind-ip 0.0.0.0 \
-        --confirm-external-bind \
-        --wallet-file /wallet/{u.username}.wallet \
-        --rpc-login {u.username}:{u.wallet_password} \
-        --password {u.wallet_password} \
-        --daemon-address {"https" if config.DAEMON_SSL else "http"}://{config.DAEMON_HOST}:{config.DAEMON_PORT} \
-        --daemon-login {config.DAEMON_USERNAME}:{config.DAEMON_PASSWORD} \
-        --trusted-daemon \
-        --log-file /wallet/{u.username}-rpc.log
-        """
+        daemon_address = (
+            f"{'https' if config.DAEMON_SSL else 'http'}://"
+            f"{config.DAEMON_HOST}:{config.DAEMON_PORT}"
+        )
+        entrypoint: list[str] = [
+            "nerva-wallet-rpc",
+            "--non-interactive",
+            "--rpc-bind-port",
+            str(self.listen_port),
+            "--rpc-bind-ip",
+            "0.0.0.0",
+            "--confirm-external-bind",
+            "--wallet-file",
+            f"/wallet/{u.username}.wallet",
+            "--rpc-login",
+            f"{u.username}:{wallet_password}",
+            "--password",
+            wallet_password,
+            "--daemon-address",
+            daemon_address,
+            "--daemon-login",
+            f"{config.DAEMON_USERNAME}:{config.DAEMON_PASSWORD}",
+            "--trusted-daemon",
+            "--log-file",
+            f"/wallet/{u.username}-rpc.log",
+        ]
         try:
             container = self.client.containers.run(
                 self.nerva_docker_img,
-                entrypoint=command,
+                entrypoint=entrypoint,
                 auto_remove=True,
                 name=container_name,
                 remove=True,
                 detach=True,
                 volumes={volume_name: {"bind": "/wallet", "mode": "rw"}},
-                ports={f"{self.listen_port}/tcp": None},
+                ports={
+                    f"{self.listen_port}/tcp": cast(
+                        "tuple[str, int]", ("127.0.0.1", None)
+                    )
+                },
             )
             return container.short_id
 

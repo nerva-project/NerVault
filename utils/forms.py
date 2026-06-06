@@ -1,8 +1,11 @@
-from re import match
-
 from wtforms import StringField, BooleanField
 from quart_wtf import QuartForm
 from wtforms.validators import Email, Optional, DataRequired, ValidationError
+
+from library.validation import (
+    validate_seed as check_seed,
+    is_valid_username,
+)
 
 
 class Register(QuartForm):
@@ -60,6 +63,18 @@ class Register(QuartForm):
         render_kw={"class": "form-control-span"},
     )
     # recaptcha = RecaptchaField()
+
+    def validate_username(self, _: object) -> None:
+        """Normalise to lowercase and enforce the allowed username charset."""
+
+        if self.username.data:
+            self.username.data = self.username.data.strip().lower()
+
+        if not is_valid_username(self.username.data or ""):
+            raise ValidationError(
+                "Username must be 3-32 characters long and contain only "
+                "lowercase letters, digits, or underscores."
+            )
 
 
 class Login(QuartForm):
@@ -161,22 +176,19 @@ class Restore(QuartForm):
     )
 
     def validate_seed(self, _: object) -> None:
-        """Validate that the seed phrase is in the correct format."""
+        """Validate that the seed phrase is a standard 25-word Nerva mnemonic."""
 
         if not self.seed.data:
             raise ValidationError("Seed phrase is required")
 
-        regex = "^[\\w\\s]+$"
+        try:
+            self.seed.data = check_seed(self.seed.data.lower())
 
-        if bool(match(regex, self.seed.data)) is False:
+        except ValueError:
             raise ValidationError(
-                "Invalid seed phrase provided; must be alpha-numeric characters only"
-            )
-
-        if len(self.seed.data.split()) != 25:
-            raise ValidationError(
-                "Invalid seed phrase provided; must be standard Nerva 25 word format"
-            )
+                "Invalid seed phrase provided; must be a standard 25-word "
+                "Nerva mnemonic seed phrase."
+            ) from None
 
 
 class Send(QuartForm):
