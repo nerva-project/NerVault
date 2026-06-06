@@ -1070,6 +1070,7 @@ dependencies = [
     { name = "quart" },
     { name = "quart-auth" },
     { name = "quart-bcrypt" },
+    { name = "quart-rate-limiter" },
     { name = "quart-wtforms" },
     { name = "redis" },
 ]
@@ -1105,6 +1106,7 @@ requires-dist = [
     { name = "quart", specifier = "==0.20.0" },
     { name = "quart-auth", specifier = "==0.11.0" },
     { name = "quart-bcrypt", specifier = "==0.0.9" },
+    { name = "quart-rate-limiter", specifier = "==0.10.0" },
     { name = "quart-wtforms", specifier = "==1.0.3" },
     { name = "redis", specifier = "==7.4.0" },
     { name = "uvloop", marker = "extra == 'speed'", specifier = ">=0.22.1" },
@@ -1589,6 +1591,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/b8/df/8110d19ef99019e30a54dd610f298a77140fbfd57187b13bfd637cca3534/quart_bcrypt-0.0.9.tar.gz", hash = "sha256:b869a7298de6a19cc78f183ff760a79ca38067ca97d3fb8cd4760db9d60b78d9", size = 6107, upload-time = "2024-10-07T00:11:11.555Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/13/1a/bdac9d67bda4474cc9f3e1c8c6d9acaaa435e06282b9ddfe9ed4f24baea0/quart_bcrypt-0.0.9-py3-none-any.whl", hash = "sha256:f541c5eba1ca48269f4e2ba5aad8c4d0bcbb833b355164adbbf0c63dedee999b", size = 7024, upload-time = "2024-10-07T00:11:10.005Z" },
+]
+
+[[package]]
+name = "quart-rate-limiter"
+version = "0.10.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "quart" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/81/d9/c6e98db7fdf9ff31ecd8da889a58ece0d214cb12ee1b41751b751b3201e2/quart_rate_limiter-0.10.0.tar.gz", hash = "sha256:87e538e50b4a0e8c3fc2d72e0c7bd4f0de193f041d70e9deb18128730e9a3e5b", size = 7112, upload-time = "2024-05-19T09:41:16.45Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f1/41/310850a9e1940f8c014602647d929985eb88a09f15fffabef021f81a06b1/quart_rate_limiter-0.10.0-py3-none-any.whl", hash = "sha256:dcc9b429b856550744dd014f6f02f6d9e6b01b39b1a2092bec2fc4bbd408f902", size = 7966, upload-time = "2024-05-19T09:41:14.895Z" },
 ]
 
 [[package]]

@@ -11,6 +11,10 @@ MONGO_DB = "database_name"
 # Redis
 REDIS_URL = "redis://:password@host:port/0"
 
+# Rate Limiting
+RATE_LIMIT_COUNT = 120
+RATE_LIMIT_PERIOD = 60
+
 # Docker
 WALLET_DIR = "./data/wallets"
 NERVA_DOCKER_IMAGE = "sn1f3rt/nerva:latest"

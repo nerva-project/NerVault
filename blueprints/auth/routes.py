@@ -2,6 +2,7 @@ from blueprints.auth import auth_bp
 
 import datetime
 from asyncio import sleep
+from datetime import timedelta
 
 import aiohttp
 from quart import flash, request, url_for, redirect, current_app, render_template
@@ -12,6 +13,7 @@ from quart_auth import (
     login_required,
 )
 from quart.typing import ResponseReturnValue
+from quart_rate_limiter import rate_limit
 
 from utils.mail import send_email
 from utils.forms import Login, Reset, Delete, Register, ResetPassword
@@ -22,8 +24,42 @@ from library.helpers import capture_event
 
 current_user: User = _current_user  # type: ignore[assignment]
 
+SENSITIVE_IP_LIMIT = 10
+SENSITIVE_IP_PERIOD = timedelta(minutes=1)
+SENSITIVE_ACCOUNT_LIMIT = 5
+SENSITIVE_ACCOUNT_PERIOD = timedelta(minutes=15)
+
+
+async def _account_rate_limit_key() -> str:
+    """Rate-limit key based on the targeted account, for brute-force protection."""
+    form = await request.form
+    identifier = (
+        form.get("username")
+        or form.get("email")
+        or (request.view_args or {}).get("token")
+    )
+
+    if identifier:
+        return str(identifier).strip().lower()
+
+    return request.headers.get("CF-Connecting-IP") or request.access_route[0]
+
+
+async def _skip_safe_methods() -> bool:
+    """Skip rate limiting for non-mutating requests (e.g. rendering a form)."""
+    return request.method in ("GET", "HEAD", "OPTIONS")
+
 
 @auth_bp.route("/register", methods=["GET", "POST"])
+@rate_limit(
+    SENSITIVE_IP_LIMIT, SENSITIVE_IP_PERIOD, skip_function=_skip_safe_methods
+)
+@rate_limit(
+    SENSITIVE_ACCOUNT_LIMIT,
+    SENSITIVE_ACCOUNT_PERIOD,
+    key_function=_account_rate_limit_key,
+    skip_function=_skip_safe_methods,
+)
 async def _register() -> ResponseReturnValue:
     """
     Handles user registration process, including form validation,
@@ -121,6 +157,12 @@ async def _register() -> ResponseReturnValue:
 
 
 @auth_bp.route("/confirm/<token>", methods=["GET"])
+@rate_limit(SENSITIVE_IP_LIMIT, SENSITIVE_IP_PERIOD)
+@rate_limit(
+    SENSITIVE_ACCOUNT_LIMIT,
+    SENSITIVE_ACCOUNT_PERIOD,
+    key_function=_account_rate_limit_key,
+)
 async def _confirm(token: str) -> ResponseReturnValue:
     """
     Confirms the user's account using the provided token.
@@ -175,6 +217,7 @@ async def _unconfirmed() -> ResponseReturnValue:
 
 
 @auth_bp.route("/resend", methods=["GET"])
+@rate_limit(SENSITIVE_IP_LIMIT, SENSITIVE_IP_PERIOD)
 @login_required
 async def _resend() -> ResponseReturnValue:
     """
@@ -195,6 +238,15 @@ async def _resend() -> ResponseReturnValue:
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
+@rate_limit(
+    SENSITIVE_IP_LIMIT, SENSITIVE_IP_PERIOD, skip_function=_skip_safe_methods
+)
+@rate_limit(
+    SENSITIVE_ACCOUNT_LIMIT,
+    SENSITIVE_ACCOUNT_PERIOD,
+    key_function=_account_rate_limit_key,
+    skip_function=_skip_safe_methods,
+)
 async def _login() -> ResponseReturnValue:
     """
     Handles user login, including form validation and authentication.
@@ -249,6 +301,15 @@ async def _logout() -> ResponseReturnValue:
 
 
 @auth_bp.route("/reset", methods=["GET", "POST"])
+@rate_limit(
+    SENSITIVE_IP_LIMIT, SENSITIVE_IP_PERIOD, skip_function=_skip_safe_methods
+)
+@rate_limit(
+    SENSITIVE_ACCOUNT_LIMIT,
+    SENSITIVE_ACCOUNT_PERIOD,
+    key_function=_account_rate_limit_key,
+    skip_function=_skip_safe_methods,
+)
 async def _reset() -> ResponseReturnValue:
     """
     Handles the password reset process, including sending a reset link to the user.

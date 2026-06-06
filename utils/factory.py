@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Optional
 
 import sys
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import click
 from quart import Quart, flash, request, url_for, redirect
@@ -16,6 +16,7 @@ from quart.typing import ResponseReturnValue
 from quart_bcrypt import Bcrypt
 from dateutil.parser import parse
 from password_validator import PasswordValidator
+from quart_rate_limiter import RateLimiter, limit_blueprint
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
 
@@ -31,6 +32,10 @@ daemon: DaemonHTTP
 db: AsyncDatabase[Any]
 docker: Docker
 schema: PasswordValidator
+
+
+async def _rate_limit_key() -> str:
+    return request.headers.get("CF-Connecting-IP") or request.access_route[0]
 
 
 async def create_app() -> Quart:
@@ -79,6 +84,9 @@ async def create_app() -> Quart:
     # Initialize CSRF protection
     csrf = CSRFProtect()
     csrf.init_app(app)
+
+    # Initialize rate limiting (per-client, keyed by originating IP)
+    RateLimiter(app, key_function=_rate_limit_key)
 
     # Set up Daemon connection (Nerva)
     daemon = DaemonHTTP(
@@ -276,6 +284,13 @@ async def create_app() -> Quart:
         from blueprints.auth import auth_bp
         from blueprints.meta import meta_bp
         from blueprints.wallet import wallet_bp
+
+        count: int = app.config["RATE_LIMIT_COUNT"]
+        period: timedelta = timedelta(seconds=app.config["RATE_LIMIT_PERIOD"])
+
+        limit_blueprint(auth_bp, count, period)
+        limit_blueprint(meta_bp, count, period)
+        limit_blueprint(wallet_bp, count, period)
 
         app.register_blueprint(auth_bp)
         app.register_blueprint(meta_bp)

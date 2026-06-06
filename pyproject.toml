@@ -17,6 +17,7 @@ dependencies = [
     "docker==7.1.0",
     "pymongo==4.16.0",
     "quart-auth==0.11.0",
+    "quart-rate-limiter==0.10.0",
     "quart-wtforms==1.0.3",
     "qrcode[pil]==8.2",
     "email-validator==2.3.0",
@@ -62,5 +63,11 @@ python_version = "3.13"
 strict = true
 
 [[tool.mypy.overrides]]
-module = ["nerva", "nerva.*", "password_validator", "config"]
+module = [
+    "nerva",
+    "nerva.*",
+    "password_validator",
+    "quart_rate_limiter.*",
+    "config",
+]
 ignore_missing_imports = true
