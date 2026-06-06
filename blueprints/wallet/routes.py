@@ -3,7 +3,7 @@ from blueprints.wallet import wallet_bp
 import string
 from io import BytesIO
 from base64 import b64encode
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from datetime import UTC, datetime
 
 from PIL import Image
@@ -387,9 +387,14 @@ async def _send() -> ResponseReturnValue:
 
         else:
             try:
-                amount = to_atomic(Decimal(send_form.amount.data))  # type: ignore[arg-type]
+                decimal_amount = Decimal(send_form.amount.data)  # type: ignore[arg-type]
+                if not decimal_amount.is_finite() or decimal_amount <= 0:
+                    raise InvalidOperation
+                amount = to_atomic(decimal_amount)
+                if amount <= 0:
+                    raise InvalidOperation
 
-            except ValueError:
+            except (InvalidOperation, ValueError):
                 await flash("Invalid Nerva amount specified.", "error")
                 await capture_event(current_user.username, "tx_fail_amount_invalid")
                 return redirect(redirect_url)

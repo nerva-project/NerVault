@@ -17,6 +17,7 @@ from quart_bcrypt import Bcrypt
 from dateutil.parser import parse
 from password_validator import PasswordValidator
 from quart_rate_limiter import RateLimiter, limit_blueprint
+from werkzeug.exceptions import HTTPException
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
 
@@ -279,6 +280,19 @@ async def create_app() -> Quart:
             """Redirects the user to the login page in case of Unauthorized access."""
             await flash("You need to log in to access this page", "warning")
             return redirect(url_for("auth._login"))
+
+        @app.errorhandler(HTTPException)
+        async def _handle_http_exception(
+            error: HTTPException,
+        ) -> ResponseReturnValue:
+            """Returns a generic response for HTTP errors without leaking internals."""
+            return f"{error.code} {error.name}", error.code or 500
+
+        @app.errorhandler(Exception)
+        async def _handle_exception(_: Exception) -> ResponseReturnValue:
+            """Logs unexpected errors server-side and returns a generic response."""
+            app.logger.exception("Unhandled exception")
+            return "Internal Server Error", 500
 
         # Register blueprints
         from blueprints.auth import auth_bp

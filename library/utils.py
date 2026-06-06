@@ -24,6 +24,9 @@ def to_atomic(amount: Decimal) -> int:
             "float (not recommended) are accepted as amounts."
         )
 
+    if isinstance(amount, Decimal) and not amount.is_finite():
+        raise ValueError("Amount must be a finite number.")
+
     return int(amount * 10**12)
 
 
