@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "NerVault"
-version = "1.1.0"
+version = "2.0.0"
 description = "A custodial web wallet for the Nerva (XNV) cryptocurrency."
 license = "GPL-3.0"
 authors = [
@@ -22,13 +22,11 @@ dependencies = [
     "pymongo==4.16.0",
     "quart-auth==0.11.0",
     "quart-rate-limiter==0.10.0",
-    "quart-wtforms==1.0.3",
     "qrcode[pil]==8.2",
     "email-validator==2.3.0",
     "aiosmtplib==5.1.0",
     "httpx==0.28.1",
     "nerva-py==2.0.0",
-    "python-dateutil==2.9.0.post0",
 ]
 
 [project.optional-dependencies]
@@ -41,9 +39,7 @@ dev = [
     "mypy==1.15.0",
     "pre-commit==4.5.1",
     "ruff==0.15.10",
-    "types-WTForms",
     "types-docker",
-    "types-python-dateutil",
     "types-qrcode",
 ]
 
@@ -55,20 +51,22 @@ target-version = "py313"
 select = ["I"]
 
 [tool.ruff.lint.isort]
-section-order = ["future", "typing", "blueprints", "standard-library", "third-party", "first-party", "local-folder", "config"]
+known-first-party = ["backend"]
+section-order = ["future", "typing", "standard-library", "third-party", "first-party", "local-folder"]
 force-wrap-aliases = true
 combine-as-imports = true
 length-sort = true
 
 [tool.ruff.lint.isort.sections]
 "typing" = ["typing"]
-"blueprints" = ["blueprints"]
-"config" = ["config"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["blueprints", "library", "utils"]
+packages = ["src/backend"]
 
 [tool.mypy]
+files = ["src/backend"]
+mypy_path = "src"
+explicit_package_bases = true
 python_version = "3.13"
 strict = true
 
@@ -78,6 +76,6 @@ module = [
     "nerva.*",
     "password_validator",
     "quart_rate_limiter.*",
-    "config",
+    "backend.config",
 ]
 ignore_missing_imports = true

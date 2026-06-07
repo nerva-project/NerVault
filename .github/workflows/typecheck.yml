@@ -26,4 +26,4 @@ jobs:
             -   name: Install dependencies
                 run: uv sync --all-extras
             -   name: Type check
-                run: uv run mypy .
+                run: uv run mypy src/backend

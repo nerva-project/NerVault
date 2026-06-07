@@ -10,27 +10,27 @@ image:
 	docker pull sn1f3rt/nerva:latest
 
 dev:
-	uv run launcher.py
+	uv run hypercorn --reload --bind 127.0.0.1:8080 backend.launcher:app
 
 prod:
-	uv run hypercorn --bind 0.0.0.0:17569 launcher:app
+	uv run hypercorn --bind 0.0.0.0:17569 backend.launcher:app
 
 maintenance-enable:
-	QUART_APP=launcher:app uv run quart maintenance enable
+	QUART_APP=backend.launcher:app uv run quart maintenance enable
 
 maintenance-disable:
-	QUART_APP=launcher:app uv run quart maintenance disable
+	QUART_APP=backend.launcher:app uv run quart maintenance disable
 
 reset-wallet:
 	@if [ -z "$(filter-out $@,$(MAKECMDGOALS))" ]; then echo "Usage: make reset-wallet <username>"; exit 1; fi
-	QUART_APP=launcher:app uv run quart reset_wallet $(filter-out $@,$(MAKECMDGOALS))
+	QUART_APP=backend.launcher:app uv run quart reset_wallet $(filter-out $@,$(MAKECMDGOALS))
 
 lint:
 	uv run ruff check --fix .
 	uv run ruff format .
 
 typecheck:
-	uv run mypy .
+	uv run mypy src/backend
 
 .PHONY: install install-dev install-prod image dev prod maintenance-enable maintenance-disable reset-wallet lint typecheck
 .DEFAULT_GOAL := dev
