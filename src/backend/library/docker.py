@@ -34,6 +34,10 @@ class Docker:
         self.nerva_docker_img: str = config.NERVA_DOCKER_IMAGE
         self.wallet_dir: str = expanduser(config.WALLET_DIR)
         self.listen_port: int = 8888
+        self.wallet_network: Optional[str] = (
+            getattr(config, "WALLET_NETWORK", None) or None
+        )
+        self.extra_hosts: dict[str, str] = {"host.docker.internal": "host-gateway"}
 
     async def create_wallet(self, username: str, seed: Optional[str] = None) -> str:
         """
@@ -120,6 +124,8 @@ class Docker:
             remove=True,
             detach=True,
             volumes={volume_name: {"bind": "/wallet", "mode": "rw"}},
+            network=self.wallet_network,
+            extra_hosts=self.extra_hosts,
         )
         return container.short_id
 
@@ -170,6 +176,15 @@ class Docker:
             "--log-file",
             f"/wallet/{u.username}-rpc.log",
         ]
+        ports: Optional[dict[str, tuple[str, int]]] = (
+            None
+            if self.wallet_network
+            else {
+                f"{self.listen_port}/tcp": cast(
+                    "tuple[str, int]", ("127.0.0.1", None)
+                )
+            }
+        )
         try:
             container = self.client.containers.run(
                 self.nerva_docker_img,
@@ -179,11 +194,9 @@ class Docker:
                 remove=True,
                 detach=True,
                 volumes={volume_name: {"bind": "/wallet", "mode": "rw"}},
-                ports={
-                    f"{self.listen_port}/tcp": cast(
-                        "tuple[str, int]", ("127.0.0.1", None)
-                    )
-                },
+                network=self.wallet_network,
+                extra_hosts=self.extra_hosts,
+                ports=ports,
             )
             return container.short_id
 
@@ -207,6 +220,34 @@ class Docker:
         port_data = client.port(container_id, self.listen_port)
         host_port = port_data[0]["HostPort"]
         return int(host_port)
+
+    def rpc_host(self, username: str) -> str:
+        """
+        Returns the host the app should use to reach a user's wallet RPC.
+
+        Args:
+            username (str): The username of the user.
+
+        Returns:
+            str: The wallet container name (shared network) or loopback.
+        """
+        if self.wallet_network:
+            return f"rpc_wallet_{username}"
+        return "127.0.0.1"
+
+    def rpc_port(self, container_id: str) -> int:
+        """
+        Returns the port the app should use to reach a wallet RPC.
+
+        Args:
+            container_id (str): The ID of the wallet RPC container.
+
+        Returns:
+            int: The internal RPC port (shared network) or mapped host port.
+        """
+        if self.wallet_network:
+            return self.listen_port
+        return self.get_port(container_id)
 
     def container_exists(self, container_id: str) -> bool:
         """

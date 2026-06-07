@@ -22,6 +22,10 @@ FRONTEND_URL = "http://localhost:5173"
 WALLET_DIR = "./data/wallets"
 NERVA_DOCKER_IMAGE = "sn1f3rt/nerva:latest"
 PERMANENT_SESSION_LIFETIME = 3600
+# Empty for the run-on-host model (wallet RPC published to 127.0.0.1). In the
+# containerized stack, set this to the shared Docker network name so the app
+# reaches spawned wallet containers by name (e.g. "nervault").
+WALLET_NETWORK = ""
 
 # Daemon
 DAEMON_HOST = "localhost"

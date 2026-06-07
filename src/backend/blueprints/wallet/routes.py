@@ -31,15 +31,18 @@ current_user: User = _current_user  # type: ignore[assignment]
 QR_LOGO_PATH = Path(__file__).resolve().parents[2] / "assets" / "nerva-qr.png"
 
 
-def _wallet_rpc() -> Wallet:
+def _wallet_rpc(timeout: int | None = None) -> Wallet:
     """Builds a Wallet RPC client for the current user's running container."""
-    return Wallet(
-        host="127.0.0.1",
-        port=current_user.wallet_port,
-        ssl=False,
-        username=current_user.username,
-        password=current_user.wallet_password,
-    )
+    kwargs: dict[str, Any] = {
+        "host": docker.rpc_host(current_user.username),
+        "port": current_user.wallet_port,
+        "ssl": False,
+        "username": current_user.username,
+        "password": current_user.wallet_password,
+    }
+    if timeout is not None:
+        kwargs["timeout"] = timeout
+    return Wallet(**kwargs)
 
 
 @wallet_bp.route("/status", methods=["GET"])
@@ -140,7 +143,7 @@ async def _connect() -> tuple[Response, int]:
     container = await docker.start_wallet(current_user.username)
 
     try:
-        port = docker.get_port(container)
+        port = docker.rpc_port(container)
     except TypeError:
         return jsonify(
             {"status": "error", "error": "Failed to connect wallet."}
@@ -320,14 +323,7 @@ async def _transfer() -> tuple[Response, int]:
     amount_raw = str(data.get("amount") or "").strip()
     payment_id = str(data.get("payment_id") or "").strip() or None
 
-    wallet = Wallet(
-        host="127.0.0.1",
-        port=current_user.wallet_port,
-        ssl=False,
-        username=current_user.username,
-        password=current_user.wallet_password,
-        timeout=30,
-    )
+    wallet = _wallet_rpc(timeout=30)
 
     if not await wallet.connected:
         await capture_event(current_user.username, "tx_fail_rpc_unavailable")
