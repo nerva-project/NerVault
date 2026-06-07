@@ -1,0 +1,67 @@
+services:
+  api:
+    build:
+      context: .
+      target: api
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - docker-socket-proxy
+    environment:
+      # Orchestrate wallet containers through the least-privilege socket proxy.
+      DOCKER_HOST: tcp://docker-socket-proxy:2375
+    # Reach a Nerva daemon running on the host via host.docker.internal. Inert
+    # if the daemon is remote — point DAEMON_HOST at that host instead.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./src/backend/config.py:/app/src/backend/config.py:ro
+    networks:
+      - nervault
+    expose:
+      - "8080"
+
+  web:
+    build:
+      context: .
+      target: web
+    restart: unless-stopped
+    depends_on:
+      - api
+    networks:
+      - nervault
+    ports:
+      - "127.0.0.1:17569:80"
+
+  redis:
+    image: valkey/valkey:8-alpine
+    restart: unless-stopped
+    networks:
+      - nervault
+    volumes:
+      - redis-data:/data
+
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:0.3
+    restart: unless-stopped
+    environment:
+      # Least-privilege: only the endpoints NerVault needs to spawn, inspect
+      # and tear down per-user wallet containers and their volumes.
+      CONTAINERS: 1
+      IMAGES: 1
+      NETWORKS: 1
+      VOLUMES: 1
+      INFO: 1
+      POST: 1
+      EXEC: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - nervault
+
+networks:
+  nervault:
+    name: nervault
+
+volumes:
+  redis-data:
