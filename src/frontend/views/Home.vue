@@ -47,11 +47,11 @@ onMounted(async () => {
       </p>
       <div class="stack" style="flex-direction: row; justify-content: center; gap: 0.75rem">
         <template v-if="auth.isAuthenticated">
-          <RouterLink class="btn btn--primary" to="/wallet/dashboard">Open wallet</RouterLink>
+          <RouterLink class="btn btn--primary btn--lg" to="/wallet/dashboard">Open wallet</RouterLink>
         </template>
         <template v-else>
-          <RouterLink class="btn btn--primary" to="/register">Get started</RouterLink>
-          <RouterLink class="btn btn--ghost" to="/login">Login</RouterLink>
+          <RouterLink class="btn btn--primary btn--lg" to="/register">Get started</RouterLink>
+          <RouterLink class="btn btn--ghost btn--lg" to="/login">Login</RouterLink>
         </template>
       </div>
     </div>
