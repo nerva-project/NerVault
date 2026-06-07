@@ -85,7 +85,13 @@ router.beforeEach(async (to) => {
   const auth = useAuthStore()
 
   if (!auth.ready) {
-    await auth.fetchMe()
+    // Only block navigation on the session check for routes that actually
+    // gate on auth; public routes render immediately while it resolves.
+    if (to.meta.requiresAuth || to.meta.requiresConfirmed) {
+      await auth.fetchMe()
+    } else {
+      void auth.fetchMe()
+    }
   }
 
   if (to.meta.requiresAuth && !auth.isAuthenticated) {

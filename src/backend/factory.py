@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional
 
-import sys
 import asyncio
 from datetime import timedelta
 
@@ -102,24 +101,6 @@ async def create_app() -> Quart:
     # Initialize authentication manager
     auth_manager = QuartAuth(app)
 
-    # Set up SMTP server connection
-    smtp = SMTP(
-        hostname=app.config["MAIL_HOST"],
-        port=app.config["MAIL_PORT"],
-        username=app.config["MAIL_USERNAME"],
-        password=app.config["MAIL_PASSWORD"],
-        use_tls=app.config["MAIL_USE_SSL"],
-        start_tls=app.config["MAIL_USE_TLS"],
-        validate_certs=app.config["MAIL_VALIDATE_CERTS"],
-    )
-
-    try:
-        await smtp.connect()
-        del smtp
-    except SMTPException:
-        print("Failed to connect to SMTP server. Exiting...")
-        sys.exit(1)
-
     async with app.app_context():
         from backend.utils.models import User
 
@@ -127,7 +108,9 @@ async def create_app() -> Quart:
 
         @app.before_request
         async def _load_user_data() -> None:
-            """Loads the current user data if available before each request."""
+            """Loads the current user's data when authenticated."""
+            if current_user.auth_id is None:
+                return
             try:
                 await current_user.load()  # type: ignore[attr-defined]
             except ValueError:
@@ -159,6 +142,27 @@ async def create_app() -> Quart:
                     print("[INFO] Cleaned up expired wallet containers")
 
             asyncio.ensure_future(_cleanup_loop())
+
+        # Background task: probe the SMTP server without blocking startup.
+        @app.before_serving
+        async def _probe_smtp() -> None:
+            async def _check() -> None:
+                smtp = SMTP(
+                    hostname=app.config["MAIL_HOST"],
+                    port=app.config["MAIL_PORT"],
+                    username=app.config["MAIL_USERNAME"],
+                    password=app.config["MAIL_PASSWORD"],
+                    use_tls=app.config["MAIL_USE_SSL"],
+                    start_tls=app.config["MAIL_USE_TLS"],
+                    validate_certs=app.config["MAIL_VALIDATE_CERTS"],
+                )
+                try:
+                    await smtp.connect()
+                    await smtp.quit()
+                except SMTPException:
+                    app.logger.warning("Could not connect to the SMTP server")
+
+            asyncio.ensure_future(_check())
 
         # CLI commands
         @app.cli.command("reset_wallet")
