@@ -1,0 +1,33 @@
+{
+  "name": "nervault-web",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Frontend for NerVault, a custodial Nerva (XNV) web wallet",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "concurrently --kill-others-on-fail -c blue,magenta npm:typecheck:*",
+    "typecheck:backend": "uv run mypy src/backend",
+    "typecheck:frontend": "vue-tsc -b",
+    "serve": "concurrently --kill-others-on-fail -c blue,magenta npm:serve:*",
+    "serve:backend": "make dev",
+    "serve:frontend": "vite"
+  },
+  "dependencies": {
+    "pinia": "^2.3.1",
+    "vue": "^3.5.35",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.0",
+    "@types/node": "^25.9.1",
+    "@vitejs/plugin-vue": "^6.0.7",
+    "concurrently": "^10.0.3",
+    "tailwindcss": "^4.3.0",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16",
+    "vue-tsc": "^3.3.3"
+  }
+}

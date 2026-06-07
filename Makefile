@@ -12,6 +12,9 @@ image:
 dev:
 	uv run hypercorn --reload --bind 127.0.0.1:8080 backend.launcher:app
 
+serve:
+	npm run serve
+
 prod:
 	uv run hypercorn --bind 0.0.0.0:17569 backend.launcher:app
 
@@ -32,7 +35,7 @@ lint:
 typecheck:
 	uv run mypy src/backend
 
-.PHONY: install install-dev install-prod image dev prod maintenance-enable maintenance-disable reset-wallet lint typecheck
+.PHONY: install install-dev install-prod image dev serve prod maintenance-enable maintenance-disable reset-wallet lint typecheck
 .DEFAULT_GOAL := dev
 
 %:

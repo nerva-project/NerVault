@@ -134,3 +134,7 @@ dmypy.json
 
 # NerVault
 config.py
+
+# Node / frontend
+node_modules/
+*.tsbuildinfo

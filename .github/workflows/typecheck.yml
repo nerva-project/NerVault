@@ -23,7 +23,14 @@ jobs:
                 uses: actions/setup-python@v5
                 with:
                     python-version-file: ".python-version"
-            -   name: Install dependencies
+            -   name: Set up Node
+                uses: actions/setup-node@v4
+                with:
+                    node-version: "22"
+                    cache: "npm"
+            -   name: Install backend dependencies
                 run: uv sync --all-extras
-            -   name: Type check
-                run: uv run mypy src/backend
+            -   name: Install frontend dependencies
+                run: npm ci
+            -   name: Type check (backend + frontend)
+                run: npm run typecheck
