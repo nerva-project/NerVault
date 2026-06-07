@@ -19,7 +19,6 @@ RATE_LIMIT_PERIOD = 60
 FRONTEND_URL = "http://localhost:5173"
 
 # Docker
-WALLET_DIR = "./data/wallets"
 NERVA_DOCKER_IMAGE = "sn1f3rt/nerva:latest"
 PERMANENT_SESSION_LIFETIME = 3600
 # Empty for the run-on-host model (wallet RPC published to 127.0.0.1). In the

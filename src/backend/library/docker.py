@@ -2,7 +2,6 @@ from typing import Optional, cast
 
 import sys
 import asyncio
-from os.path import expanduser
 from secrets import token_hex
 from datetime import UTC, datetime, timedelta
 
@@ -32,7 +31,6 @@ class Docker:
             sys.exit(1)
 
         self.nerva_docker_img: str = config.NERVA_DOCKER_IMAGE
-        self.wallet_dir: str = expanduser(config.WALLET_DIR)
         self.listen_port: int = 8888
         self.wallet_network: Optional[str] = (
             getattr(config, "WALLET_NETWORK", None) or None

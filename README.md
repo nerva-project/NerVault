@@ -89,7 +89,6 @@ must be present before anything else can load.
 | `REDIS_URL` | Redis/Valkey URL (cache, maintenance flag). In the stack: `redis://redis:6379/0`. |
 | `RATE_LIMIT_COUNT` / `RATE_LIMIT_PERIOD` | Default per-IP request budget (count per period seconds) for all blueprints. |
 | `FRONTEND_URL` | Public base URL of the SPA; used to build email links. Prod: `https://vault.nerva.one`. |
-| `WALLET_DIR` | Local directory for wallet data (run-on-host model). |
 | `NERVA_DOCKER_IMAGE` | Image used for the spawned wallet containers (`sn1f3rt/nerva:latest`). |
 | `PERMANENT_SESSION_LIFETIME` | Wallet container lifetime in seconds before the cleanup loop reaps it. |
 | `WALLET_NETWORK` | Empty for run-on-host (wallet RPC published to `127.0.0.1`). In the stack set to `nervault` so the app reaches wallet containers by name on the shared network. |
