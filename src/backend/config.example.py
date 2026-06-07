@@ -16,7 +16,7 @@ RATE_LIMIT_COUNT = 120
 RATE_LIMIT_PERIOD = 60
 
 # Frontend
-FRONTEND_URL = "http://localhost:5173"
+FRONTEND_URL = "http://localhost:3000"
 
 # Docker
 NERVA_DOCKER_IMAGE = "sn1f3rt/nerva:latest"

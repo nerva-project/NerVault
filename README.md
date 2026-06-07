@@ -109,8 +109,8 @@ make serve
 ```
 
 This runs the backend (hypercorn with reload on `127.0.0.1:8080`) and the Vite
-dev server (`127.0.0.1:5173`, proxying `/v1` to the backend) together. Open
-<http://localhost:5173>.
+dev server (`127.0.0.1:3000`, proxying `/v1` to the backend) together. Open
+<http://localhost:3000>.
 
 Useful targets: `make dev` (backend only), `make lint`, `make typecheck`
 (`mypy src/backend` + `vue-tsc`), `make image` (pull the wallet image),
