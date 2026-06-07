@@ -6,11 +6,11 @@ from os.path import expanduser
 from secrets import token_hex
 from datetime import UTC, datetime, timedelta
 
-from docker import APIClient, from_env
 from docker.errors import APIError, NotFound, NullResource, DockerException
 from docker.models.volumes import Volume
 from docker.models.containers import Container
 
+from docker import APIClient, from_env
 from backend import config
 from backend.utils.models import User
 from backend.library.validation import validate_seed, validate_username
