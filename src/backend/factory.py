@@ -108,9 +108,14 @@ async def create_app() -> Quart:
 
         @app.before_request
         async def _load_user_data() -> None:
-            """Loads the current user's data when authenticated."""
+            """Loads the current user's data for authenticated, non-public requests."""
             if current_user.auth_id is None:
                 return
+
+            endpoint = request.endpoint or ""
+            if ".meta." in endpoint or ".index." in endpoint:
+                return
+
             try:
                 await current_user.load()  # type: ignore[attr-defined]
             except ValueError:
@@ -163,6 +168,17 @@ async def create_app() -> Quart:
                     app.logger.warning("Could not connect to the SMTP server")
 
             asyncio.ensure_future(_check())
+
+        # Background task: warm the coin-info cache so the first page load is fast.
+        @app.before_serving
+        async def _warm_coin_cache() -> None:
+            async def _warm() -> None:
+                try:
+                    await cache.get_coin_info()
+                except Exception:
+                    app.logger.warning("Could not warm the coin info cache")
+
+            asyncio.ensure_future(_warm())
 
         # CLI commands
         @app.cli.command("reset_wallet")
