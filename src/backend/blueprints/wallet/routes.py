@@ -5,7 +5,7 @@ from io import BytesIO
 from asyncio import sleep
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from PIL import Image
 from quart import Response, jsonify, request
@@ -16,7 +16,8 @@ from quart_auth import (
 from qrcode.main import QRCode
 from qrcode.constants import ERROR_CORRECT_H
 
-from backend.factory import cache, bcrypt, docker
+from backend import config
+from backend.factory import cache, bcrypt, daemon, docker
 from backend.library.rpc import Wallet
 from backend.utils.models import User
 from backend.library.utils import to_atomic, sort_transactions
@@ -162,6 +163,43 @@ async def _connect() -> tuple[Response, int]:
     ), 200
 
 
+@wallet_bp.route("/keepalive", methods=["POST"])
+@login_required
+@check_confirmed
+async def _keepalive() -> tuple[Response, int]:
+    """
+    Resets the wallet session timer so the container is not reaped yet.
+    """
+    if (
+        not current_user.wallet_connected
+        or not current_user.wallet_container
+        or not docker.container_exists(current_user.wallet_container)
+    ):
+        return jsonify(
+            {
+                "status": "error",
+                "error": "Wallet not connected.",
+                "code": "not_connected",
+            }
+        ), 409
+
+    current_user.wallet_started_at = datetime.now(UTC)
+    await current_user.save()
+
+    expires_at = (
+        current_user.wallet_started_at
+        + timedelta(seconds=config.PERMANENT_SESSION_LIFETIME)
+    ).isoformat()
+
+    return jsonify(
+        {
+            "status": "success",
+            "message": "Wallet session extended.",
+            "result": {"expires_at": expires_at},
+        }
+    ), 200
+
+
 @wallet_bp.route("", methods=["GET"])
 @login_required
 @check_confirmed
@@ -206,6 +244,22 @@ async def _overview() -> tuple[Response, int]:
     transactions = [tx for t in transfers.values() for tx in t]
     balance, unlocked_balance = await wallet.get_balances()
 
+    coin = await cache.get_coin_info()
+    wallet_height = int((await wallet.height())["result"]["height"])
+    try:
+        network_height = int((await daemon.get_info())["height"])
+    except Exception:
+        network_height = wallet_height
+
+    started = current_user.wallet_started_at
+    expires_at = None
+    if started is not None:
+        if started.tzinfo is None:
+            started = started.replace(tzinfo=UTC)
+        expires_at = (
+            started + timedelta(seconds=config.PERMANENT_SESSION_LIFETIME)
+        ).isoformat()
+
     await capture_event(current_user.username, "load_dashboard")
 
     return jsonify(
@@ -218,6 +272,10 @@ async def _overview() -> tuple[Response, int]:
                 "unlocked_balance": unlocked_balance,
                 "transfers": transactions,
                 "sorted_transactions": sort_transactions(transfers),
+                "price": coin.get("current_price", 0),
+                "wallet_height": wallet_height,
+                "network_height": network_height,
+                "expires_at": expires_at,
             },
         }
     ), 200

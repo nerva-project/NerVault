@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue"
+import { computed, onMounted, onUnmounted, ref } from "vue"
 import { useRouter } from "vue-router"
 
 import { api, ApiError, API_BASE } from "../../lib/api"
@@ -16,6 +16,47 @@ const error = ref("")
 const qrSrc = `${API_BASE}/wallet/qr`
 
 const overview = computed(() => wallet.overview)
+
+const now = ref(Date.now())
+
+const fiat = computed(() => {
+  const o = overview.value
+  if (!o || !o.price) return null
+  const usd = Number(fromAtomic(o.balance)) * o.price
+  return usd.toLocaleString(undefined, { style: "currency", currency: "USD" })
+})
+
+const synced = computed(() => {
+  const o = overview.value
+  if (!o || !o.network_height) return true
+  return o.wallet_height >= o.network_height - 1
+})
+
+const blocksBehind = computed(() => {
+  const o = overview.value
+  if (!o) return 0
+  return Math.max(0, o.network_height - o.wallet_height)
+})
+
+const sessionLeft = computed(() => {
+  const o = overview.value
+  if (!o?.expires_at) return null
+  const ms = new Date(o.expires_at).getTime() - now.value
+  if (ms <= 0) return "expired"
+  const totalMin = Math.floor(ms / 60000)
+  if (totalMin >= 60) return `${Math.floor(totalMin / 60)}h ${totalMin % 60}m`
+  if (totalMin >= 1) return `${totalMin}m`
+  return `${Math.floor(ms / 1000)}s`
+})
+
+async function keepAlive(): Promise<void> {
+  try {
+    await wallet.keepAlive()
+    toast.success("Session extended.")
+  } catch (e) {
+    toast.error(e instanceof ApiError ? e.message : "Could not extend session.")
+  }
+}
 
 const txList = computed(() => {
   const sorted = wallet.overview?.sorted_transactions ?? {}
@@ -58,7 +99,16 @@ async function load(): Promise<void> {
   }
 }
 
-onMounted(load)
+let timer: ReturnType<typeof setInterval> | undefined
+onMounted(() => {
+  void load()
+  timer = setInterval(() => {
+    now.value = Date.now()
+  }, 1000)
+})
+onUnmounted(() => {
+  if (timer) clearInterval(timer)
+})
 
 async function copyAddress(): Promise<void> {
   if (!overview.value) return
@@ -172,23 +222,43 @@ async function remove(): Promise<void> {
     <div v-else-if="error" class="alert alert--error">{{ error }}</div>
 
     <div v-else-if="overview" class="dash">
-      <div class="dash__top">
-        <div class="card dash__balance">
+      <div class="card dash__balance">
+        <div class="dash__stats">
           <div>
             <div class="stat__label">Balance</div>
             <div class="balance__value">
               {{ fromAtomic(overview.balance) }} <span class="balance__unit">XNV</span>
             </div>
-            <p class="muted" style="font-size: 0.85rem; margin: 0.25rem 0 0">
-              {{ fromAtomic(overview.unlocked_balance) }} XNV unlocked
+            <p class="muted" style="font-size: 0.85rem; margin: 0.3rem 0 0">
+              <template v-if="fiat">≈ {{ fiat }} · </template>{{ fromAtomic(overview.unlocked_balance) }} unlocked
             </p>
           </div>
-          <div class="stack" style="gap: 0.5rem">
-            <button class="btn btn--primary btn--block" @click="openSend">Send XNV</button>
-            <button class="btn btn--ghost btn--block" @click="load">Refresh</button>
+          <div>
+            <div class="stat__label">Network</div>
+            <div style="margin-top: 0.5rem">
+              <span class="badge" :class="synced ? 'badge--in' : 'badge--out'">
+                {{ synced ? "Synced" : `Syncing · ${blocksBehind.toLocaleString()} behind` }}
+              </span>
+            </div>
+            <p class="muted" style="font-size: 0.85rem; margin: 0.5rem 0 0">
+              Block {{ overview.network_height.toLocaleString() }}
+            </p>
+          </div>
+          <div>
+            <div class="stat__label">Session</div>
+            <div class="dash__session-val">{{ sessionLeft ?? "—" }}</div>
+            <button class="btn btn--ghost btn--sm" style="margin-top: 0.5rem" @click="keepAlive">
+              Keep alive
+            </button>
+          </div>
+          <div class="dash__actions">
+            <button class="btn btn--primary" @click="openSend">Send XNV</button>
+            <button class="btn btn--ghost" @click="load">Refresh</button>
           </div>
         </div>
+      </div>
 
+      <div class="dash__mid">
         <div class="card center">
           <img class="qr" :src="qrSrc" alt="Wallet address QR code" />
           <div class="address-box" style="margin-top: 0.75rem">
@@ -198,34 +268,34 @@ async function remove(): Promise<void> {
             Copy address
           </button>
         </div>
-      </div>
 
-      <div class="card">
-        <div class="card__title">Transactions</div>
-        <p v-if="!txList.length" class="muted">No transactions yet.</p>
-        <div v-else class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Type</th>
-                <th>Date</th>
-                <th class="num">Amount</th>
-                <th class="num">Balance</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="tx in txList" :key="tx.txid">
-                <td>
-                  <span class="badge" :class="tx.type === 'in' ? 'badge--in' : 'badge--out'">
-                    {{ tx.type }}
-                  </span>
-                </td>
-                <td class="dim">{{ formatTimestamp(tx.timestamp) }}</td>
-                <td class="num">{{ fromAtomic(tx.amount) }}</td>
-                <td class="num">{{ fromAtomic(tx.total) }}</td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="card">
+          <div class="card__title">Transactions</div>
+          <p v-if="!txList.length" class="muted">No transactions yet.</p>
+          <div v-else class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Date</th>
+                  <th class="num">Amount</th>
+                  <th class="num">Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="tx in txList" :key="tx.txid">
+                  <td>
+                    <span class="badge" :class="tx.type === 'in' ? 'badge--in' : 'badge--out'">
+                      {{ tx.type }}
+                    </span>
+                  </td>
+                  <td class="dim">{{ formatTimestamp(tx.timestamp) }}</td>
+                  <td class="num">{{ fromAtomic(tx.amount) }}</td>
+                  <td class="num">{{ fromAtomic(tx.total) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 

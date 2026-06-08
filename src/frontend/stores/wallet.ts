@@ -36,6 +36,10 @@ export interface WalletOverview {
   unlocked_balance: number
   transfers: Transfer[]
   sorted_transactions: Record<string, SortedTx>
+  price: number
+  wallet_height: number
+  network_height: number
+  expires_at: string | null
 }
 
 interface WalletState {
@@ -64,6 +68,12 @@ export const useWalletStore = defineStore("wallet", {
     },
     async connect(): Promise<void> {
       await api.post("/wallet/connect")
+    },
+    async keepAlive(): Promise<string | null> {
+      const res = await api.post<{ expires_at: string }>("/wallet/keepalive")
+      const exp = res.result?.expires_at ?? null
+      if (this.overview && exp) this.overview.expires_at = exp
+      return exp
     },
     reset(): void {
       this.status = null
