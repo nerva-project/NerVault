@@ -88,6 +88,33 @@ body {
   flex-direction: column;
 }
 
+/* atmospheric background: faint circuit grid + brand glow */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(680px 420px at 78% -8%, rgba(157, 140, 245, 0.14), transparent 70%),
+    radial-gradient(620px 420px at 0% 0%, rgba(92, 198, 245, 0.12), transparent 65%);
+  pointer-events: none;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 56px 56px;
+  opacity: 0.25;
+  mask-image: radial-gradient(circle at 50% 0%, #000 0%, transparent 78%);
+  -webkit-mask-image: radial-gradient(circle at 50% 0%, #000 0%, transparent 78%);
+  pointer-events: none;
+}
+
 #app {
   display: flex;
   flex-direction: column;
