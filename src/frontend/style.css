@@ -13,6 +13,7 @@
 }
 
 [data-theme="dark"] {
+  color-scheme: dark;
   --bg: #0a0d14;
   --bg-soft: #0c1018;
   --surface: #10141d;
@@ -39,6 +40,7 @@
 }
 
 [data-theme="light"] {
+  color-scheme: light;
   --bg: #f5f8fd;
   --bg-soft: #eef3fa;
   --surface: #ffffff;
@@ -133,6 +135,25 @@ a:hover {
 /* Suppress transitions for the frame the theme is swapped (prevents flicker). */
 .theme-switching * {
   transition: none !important;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 20px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 h1,
