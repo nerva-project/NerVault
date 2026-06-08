@@ -734,9 +734,18 @@ tbody tr + tr td {
   border-top: 1px solid var(--border-soft);
 }
 
+th.num,
+td.num {
+  text-align: right;
+}
+
 td.num {
   font-family: var(--font-mono);
-  text-align: right;
+}
+
+.tx-link {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
 }
 
 /* ----------------------------------------------------------------------------

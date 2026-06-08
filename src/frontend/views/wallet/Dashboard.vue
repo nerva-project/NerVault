@@ -268,6 +268,7 @@ async function remove(): Promise<void> {
                 <tr>
                   <th>Type</th>
                   <th>Date</th>
+                  <th>Tx</th>
                   <th class="num">Amount</th>
                   <th class="num">Balance</th>
                 </tr>
@@ -280,6 +281,10 @@ async function remove(): Promise<void> {
                     </span>
                   </td>
                   <td class="dim">{{ formatTimestamp(tx.timestamp) }}</td>
+                  <td>
+                    <a class="tx-link" :href="`https://explorer.nerva.one/detail/${tx.txid}`"
+                      target="_blank" rel="noopener">{{ shortenAddress(tx.txid, 8, 6) }}</a>
+                  </td>
                   <td class="num">{{ fromAtomic(tx.amount) }}</td>
                   <td class="num">{{ fromAtomic(tx.total) }}</td>
                 </tr>
