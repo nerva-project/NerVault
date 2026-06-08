@@ -1,11 +1,10 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import PageHeader from "../components/ui/PageHeader.vue"
+</script>
 
 <template>
   <section class="page container page--content legal">
-    <header class="pagehead">
-      <h1>Terms of Service</h1>
-      <p class="pagehead__lead">The agreement you accept by using NerVault.</p>
-    </header>
+    <PageHeader title="Terms of Service" lead="The agreement you accept by using NerVault." />
 
     <section>
       <h2>1. Acceptance of these terms</h2>

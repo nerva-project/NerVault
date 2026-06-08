@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { RouterLink } from "vue-router"
+
+import PageHeader from "../components/ui/PageHeader.vue"
 </script>
 
 <template>
   <section class="page container page--content">
-    <header class="pagehead">
-      <h1>Frequently Asked Questions</h1>
-      <p class="pagehead__lead">
-        Common questions about NerVault and using a custodial XNV wallet.
-      </p>
-    </header>
+    <PageHeader
+      title="Frequently Asked Questions"
+      lead="Common questions about NerVault and using a custodial XNV wallet."
+    />
 
     <div class="faq">
       <details class="faq__item" open>

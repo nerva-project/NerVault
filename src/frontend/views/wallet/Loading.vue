@@ -2,6 +2,7 @@
 import { onMounted, onUnmounted, ref } from "vue"
 import { useRouter } from "vue-router"
 
+import Card from "../../components/ui/Card.vue"
 import { useWalletStore } from "../../stores/wallet"
 
 const router = useRouter()
@@ -71,13 +72,13 @@ onUnmounted(stop)
 
 <template>
   <section class="page container page--narrow center">
-    <div class="card">
+    <Card>
       <div class="spinner"></div>
       <h1 class="card__title">Loading your wallet</h1>
       <p class="dim">{{ statusText }}</p>
       <p class="muted" style="font-size: 0.85rem">
         This can take a moment while the wallet container starts and syncs with the network.
       </p>
-    </div>
+    </Card>
   </section>
 </template>

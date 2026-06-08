@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import CopyField from "./CopyField.vue"
 import BaseModal from "./ui/BaseModal.vue"
+import CopyField from "./ui/CopyField.vue"
 
 defineProps<{ open: boolean }>()
 defineEmits<{ (e: "close"): void }>()

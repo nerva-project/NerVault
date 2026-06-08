@@ -2,6 +2,7 @@
 import { onMounted, ref } from "vue"
 import { RouterLink } from "vue-router"
 
+import Stat from "../components/ui/Stat.vue"
 import { api } from "../lib/api"
 import { useAuthStore } from "../stores/auth"
 
@@ -57,22 +58,10 @@ onMounted(async () => {
     </div>
 
     <div class="grid grid--stats" style="margin-top: 2rem">
-      <div class="stat">
-        <div class="stat__label">Block height</div>
-        <div class="stat__value">{{ num(info?.node.height) }}</div>
-      </div>
-      <div class="stat">
-        <div class="stat__label">Difficulty</div>
-        <div class="stat__value">{{ num(info?.node.difficulty) }}</div>
-      </div>
-      <div class="stat">
-        <div class="stat__label">Price</div>
-        <div class="stat__value">{{ usd(info?.coin.current_price) }}</div>
-      </div>
-      <div class="stat">
-        <div class="stat__label">Market cap</div>
-        <div class="stat__value">{{ usd(info?.coin.market_cap) }}</div>
-      </div>
+      <Stat label="Block height">{{ num(info?.node.height) }}</Stat>
+      <Stat label="Difficulty">{{ num(info?.node.difficulty) }}</Stat>
+      <Stat label="Price">{{ usd(info?.coin.current_price) }}</Stat>
+      <Stat label="Market cap">{{ usd(info?.coin.market_cap) }}</Stat>
     </div>
   </section>
 </template>

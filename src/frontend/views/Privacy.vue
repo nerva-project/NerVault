@@ -1,11 +1,10 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import PageHeader from "../components/ui/PageHeader.vue"
+</script>
 
 <template>
   <section class="page container page--content legal">
-    <header class="pagehead">
-      <h1>Privacy Policy</h1>
-      <p class="pagehead__lead">What NerVault collects, and how it's used.</p>
-    </header>
+    <PageHeader title="Privacy Policy" lead="What NerVault collects, and how it's used." />
 
     <section>
       <h2>1. Information we collect</h2>

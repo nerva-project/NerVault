@@ -4,8 +4,13 @@ import { useRouter } from "vue-router"
 
 import { api, ApiError, API_BASE } from "../../lib/api"
 import { fromAtomic, formatTimestamp, shortenAddress } from "../../lib/format"
+import Alert from "../../components/ui/Alert.vue"
+import Badge from "../../components/ui/Badge.vue"
 import BaseModal from "../../components/ui/BaseModal.vue"
-import CopyField from "../../components/CopyField.vue"
+import Btn from "../../components/ui/Btn.vue"
+import Card from "../../components/ui/Card.vue"
+import CopyField from "../../components/ui/CopyField.vue"
+import Spinner from "../../components/ui/Spinner.vue"
 import { useToast } from "../../composables/useToast"
 import { useWalletStore } from "../../stores/wallet"
 
@@ -206,15 +211,12 @@ async function remove(): Promise<void> {
 
 <template>
   <section class="page container">
-    <div v-if="loading" class="center">
-      <div class="spinner"></div>
-      <p class="dim">Loading your wallet…</p>
-    </div>
+    <Spinner v-if="loading" label="Loading your wallet…" />
 
-    <div v-else-if="error" class="alert alert--error">{{ error }}</div>
+    <Alert v-else-if="error">{{ error }}</Alert>
 
     <div v-else-if="overview" class="dash">
-      <div class="card dash__balance">
+      <Card class="dash__balance">
         <div class="dash__stats">
           <div>
             <div class="stat__label">Balance</div>
@@ -228,9 +230,9 @@ async function remove(): Promise<void> {
           <div>
             <div class="stat__label">Network</div>
             <div style="margin-top: 0.5rem">
-              <span class="badge" :class="synced ? 'badge--in' : 'badge--out'">
+              <Badge :variant="synced ? 'in' : 'out'">
                 {{ synced ? "Synced" : `Syncing · ${blocksBehind.toLocaleString()} behind` }}
-              </span>
+              </Badge>
             </div>
             <p class="muted" style="font-size: 0.85rem; margin: 0.5rem 0 0">
               Block {{ overview.network_height.toLocaleString() }}
@@ -239,29 +241,28 @@ async function remove(): Promise<void> {
           <div>
             <div class="stat__label">Session</div>
             <div class="dash__session-val">{{ sessionLeft ?? "—" }}</div>
-            <button class="btn btn--ghost btn--sm" style="margin-top: 0.5rem" @click="keepAlive">
+            <Btn variant="ghost" size="sm" style="margin-top: 0.5rem" @click="keepAlive">
               Keep alive
-            </button>
+            </Btn>
           </div>
           <div class="dash__actions">
-            <button class="btn btn--primary" @click="openSend">Send XNV</button>
-            <button class="btn btn--ghost" @click="load">Refresh</button>
+            <Btn variant="primary" @click="openSend">Send XNV</Btn>
+            <Btn variant="ghost" @click="load">Refresh</Btn>
           </div>
         </div>
-      </div>
+      </Card>
 
       <div class="dash__mid">
-        <div class="card center">
+        <Card class="center">
           <img class="qr" :src="qrSrc" alt="Wallet address QR code" />
           <CopyField
             style="margin-top: 0.75rem"
             :value="overview.address"
             :display="shortenAddress(overview.address, 10, 8)"
           />
-        </div>
+        </Card>
 
-        <div class="card dash__tx">
-          <div class="card__title">Transactions</div>
+        <Card class="dash__tx" title="Transactions">
           <p v-if="!txList.length" class="muted">No transactions yet.</p>
           <div v-else class="table-wrap">
             <table>
@@ -277,9 +278,7 @@ async function remove(): Promise<void> {
               <tbody>
                 <tr v-for="tx in txList" :key="tx.txid">
                   <td>
-                    <span class="badge" :class="tx.type === 'in' ? 'badge--in' : 'badge--out'">
-                      {{ tx.type }}
-                    </span>
+                    <Badge :variant="tx.type === 'in' ? 'in' : 'out'">{{ tx.type }}</Badge>
                   </td>
                   <td class="dim">{{ formatTimestamp(tx.timestamp) }}</td>
                   <td>
@@ -292,20 +291,19 @@ async function remove(): Promise<void> {
               </tbody>
             </table>
           </div>
-        </div>
+        </Card>
       </div>
 
-      <div class="card">
-        <div class="card__title">Wallet tools</div>
+      <Card title="Wallet tools">
         <div class="dash__tools">
-          <button class="btn btn--ghost" @click="secretsOpen = true">View secrets</button>
-          <button class="btn btn--danger" @click="deleteOpen = true">Delete wallet</button>
+          <Btn variant="ghost" @click="secretsOpen = true">View secrets</Btn>
+          <Btn variant="danger" @click="deleteOpen = true">Delete wallet</Btn>
         </div>
-      </div>
+      </Card>
     </div>
 
     <BaseModal :open="sendOpen" title="Send XNV" @close="sendOpen = false">
-      <div v-if="sendErr" class="alert alert--error" style="margin-bottom: 1rem">{{ sendErr }}</div>
+      <Alert v-if="sendErr" style="margin-bottom: 1rem">{{ sendErr }}</Alert>
       <form @submit.prevent="send">
         <div class="field">
           <label for="sa">Destination address</label>
@@ -319,9 +317,9 @@ async function remove(): Promise<void> {
           <label for="sp">Payment ID (optional)</label>
           <input id="sp" class="input" v-model="sendPid" autocomplete="off" />
         </div>
-        <button class="btn btn--primary btn--block" :disabled="sending">
+        <Btn type="submit" variant="primary" block :disabled="sending">
           {{ sending ? "Sending…" : "Send transaction" }}
-        </button>
+        </Btn>
       </form>
     </BaseModal>
 
@@ -330,23 +328,23 @@ async function remove(): Promise<void> {
         <p class="modal__lead">
           Enter your account password to reveal your seed and keys. Never share these with anyone.
         </p>
-        <div v-if="secretErr" class="alert alert--error" style="margin-bottom: 1rem">{{ secretErr }}</div>
+        <Alert v-if="secretErr" style="margin-bottom: 1rem">{{ secretErr }}</Alert>
         <form @submit.prevent="reveal">
           <div class="field">
             <label for="secp">Account password</label>
             <input id="secp" class="input" type="password" v-model="secretPass"
               autocomplete="current-password" required />
           </div>
-          <button class="btn btn--primary btn--block" :disabled="secretLoading">
+          <Btn type="submit" variant="primary" block :disabled="secretLoading">
             {{ secretLoading ? "Verifying…" : "Reveal secrets" }}
-          </button>
+          </Btn>
         </form>
       </template>
 
       <div v-else>
-        <div class="alert alert--warning" style="margin-bottom: 1rem">
+        <Alert variant="warning" style="margin-bottom: 1rem">
           Keep these private. Anyone with your seed can take your funds.
-        </div>
+        </Alert>
         <div v-for="f in secretFields" :key="f.key" class="secret-row">
           <span class="label">{{ f.label }}</span>
           <CopyField :value="secrets[f.key]" wrap />
@@ -360,10 +358,10 @@ async function remove(): Promise<void> {
         have saved your seed first — this cannot be undone.
       </p>
       <div class="stack" style="gap: 0.5rem">
-        <button class="btn btn--danger btn--block" :disabled="deleting" @click="remove">
+        <Btn variant="danger" block :disabled="deleting" @click="remove">
           {{ deleting ? "Deleting…" : "Yes, delete my wallet" }}
-        </button>
-        <button class="btn btn--ghost btn--block" @click="deleteOpen = false">Cancel</button>
+        </Btn>
+        <Btn variant="ghost" block @click="deleteOpen = false">Cancel</Btn>
       </div>
     </BaseModal>
   </section>
