@@ -64,6 +64,7 @@ class Docker:
             f"{config.DAEMON_HOST}:{config.DAEMON_PORT}"
         )
         daemon_login = f"{config.DAEMON_USERNAME}:{config.DAEMON_PASSWORD}"
+        daemon_ssl = "enabled" if config.DAEMON_SSL else "disabled"
 
         entrypoint: list[str]
         if seed:
@@ -76,6 +77,7 @@ class Docker:
                 '--password "$2" '
                 f'--daemon-address "{daemon_address}" '
                 f'--daemon-login "{daemon_login}" '
+                f'--daemon-ssl "{daemon_ssl}" '
                 "--trusted-daemon "
                 '--electrum-seed "$3" '
                 '--log-file "/wallet/$1-init.log" '
@@ -105,6 +107,8 @@ class Docker:
                 daemon_address,
                 "--daemon-login",
                 daemon_login,
+                "--daemon-ssl",
+                daemon_ssl,
                 "--trusted-daemon",
                 "--log-file",
                 f"/wallet/{u.username}-init.log",
@@ -152,6 +156,7 @@ class Docker:
             f"{'https' if config.DAEMON_SSL else 'http'}://"
             f"{config.DAEMON_HOST}:{config.DAEMON_PORT}"
         )
+        daemon_ssl = "enabled" if config.DAEMON_SSL else "disabled"
         entrypoint: list[str] = [
             "nerva-wallet-rpc",
             "--non-interactive",
@@ -160,6 +165,8 @@ class Docker:
             "--rpc-bind-ip",
             "0.0.0.0",
             "--confirm-external-bind",
+            "--rpc-ssl",
+            "disabled",
             "--wallet-file",
             f"/wallet/{u.username}.wallet",
             "--rpc-login",
@@ -170,6 +177,8 @@ class Docker:
             daemon_address,
             "--daemon-login",
             f"{config.DAEMON_USERNAME}:{config.DAEMON_PASSWORD}",
+            "--daemon-ssl",
+            daemon_ssl,
             "--trusted-daemon",
             "--log-file",
             f"/wallet/{u.username}-rpc.log",
