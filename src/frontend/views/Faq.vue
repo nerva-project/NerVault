@@ -153,9 +153,5 @@ import { RouterLink } from "vue-router"
         </div>
       </details>
     </div>
-
-    <p class="faq__cta">
-      <RouterLink to="/register">Create an account →</RouterLink>
-    </p>
   </section>
 </template>
