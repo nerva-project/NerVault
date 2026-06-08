@@ -10,6 +10,7 @@ import BaseModal from "../../components/ui/BaseModal.vue"
 import Btn from "../../components/ui/Btn.vue"
 import Card from "../../components/ui/Card.vue"
 import CopyField from "../../components/ui/CopyField.vue"
+import FormField from "../../components/ui/FormField.vue"
 import Spinner from "../../components/ui/Spinner.vue"
 import { useToast } from "../../composables/useToast"
 import { useWalletStore } from "../../stores/wallet"
@@ -305,18 +306,15 @@ async function remove(): Promise<void> {
     <BaseModal :open="sendOpen" title="Send XNV" @close="sendOpen = false">
       <Alert v-if="sendErr" style="margin-bottom: 1rem">{{ sendErr }}</Alert>
       <form @submit.prevent="send">
-        <div class="field">
-          <label for="sa">Destination address</label>
+        <FormField label="Destination address" input-id="sa">
           <input id="sa" class="input" v-model="sendAddr" autocomplete="off" required />
-        </div>
-        <div class="field">
-          <label for="sm">Amount (or "all")</label>
+        </FormField>
+        <FormField label='Amount (or "all")' input-id="sm">
           <input id="sm" class="input" v-model="sendAmount" placeholder='e.g. 12.5 or "all"' required />
-        </div>
-        <div class="field">
-          <label for="sp">Payment ID (optional)</label>
+        </FormField>
+        <FormField label="Payment ID (optional)" input-id="sp">
           <input id="sp" class="input" v-model="sendPid" autocomplete="off" />
-        </div>
+        </FormField>
         <Btn type="submit" variant="primary" block :disabled="sending">
           {{ sending ? "Sending…" : "Send transaction" }}
         </Btn>
@@ -330,11 +328,10 @@ async function remove(): Promise<void> {
         </p>
         <Alert v-if="secretErr" style="margin-bottom: 1rem">{{ secretErr }}</Alert>
         <form @submit.prevent="reveal">
-          <div class="field">
-            <label for="secp">Account password</label>
+          <FormField label="Account password" input-id="secp">
             <input id="secp" class="input" type="password" v-model="secretPass"
               autocomplete="current-password" required />
-          </div>
+          </FormField>
           <Btn type="submit" variant="primary" block :disabled="secretLoading">
             {{ secretLoading ? "Verifying…" : "Reveal secrets" }}
           </Btn>
