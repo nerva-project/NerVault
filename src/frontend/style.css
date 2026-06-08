@@ -698,17 +698,58 @@ td.num {
   padding: 0.5rem;
 }
 
-.address-box {
+.copyfield {
   display: flex;
-  gap: 0.5rem;
   align-items: center;
+  gap: 0.5rem;
   background: var(--bg-soft);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 0.55rem 0.7rem;
+  padding: 0.35rem 0.35rem 0.35rem 0.7rem;
   font-family: var(--font-mono);
   font-size: 0.82rem;
+}
+
+.copyfield__text {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.copyfield__text--wrap {
+  white-space: normal;
   word-break: break-all;
+}
+
+.copyfield__btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.copyfield__btn:hover {
+  color: var(--text);
+  background: var(--surface);
+}
+
+.copyfield__btn--ok {
+  color: var(--accent);
+}
+
+.copyfield__btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 .secret-row {
@@ -728,12 +769,6 @@ td.num {
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-}
-
-.secret-row .value {
-  font-family: var(--font-mono);
-  font-size: 0.82rem;
-  word-break: break-all;
 }
 
 /* ----------------------------------------------------------------------------

@@ -4,6 +4,7 @@ import { useRouter } from "vue-router"
 
 import { api, ApiError, API_BASE } from "../../lib/api"
 import { fromAtomic, formatTimestamp, shortenAddress } from "../../lib/format"
+import CopyField from "../../components/CopyField.vue"
 import { useToast } from "../../composables/useToast"
 import { useWalletStore } from "../../stores/wallet"
 
@@ -109,16 +110,6 @@ onMounted(() => {
 onUnmounted(() => {
   if (timer) clearInterval(timer)
 })
-
-async function copyAddress(): Promise<void> {
-  if (!overview.value) return
-  try {
-    await navigator.clipboard.writeText(overview.value.address)
-    toast.success("Address copied.")
-  } catch {
-    /* ignore */
-  }
-}
 
 /* ---- Send ---- */
 const sendOpen = ref(false)
@@ -261,12 +252,11 @@ async function remove(): Promise<void> {
       <div class="dash__mid">
         <div class="card center">
           <img class="qr" :src="qrSrc" alt="Wallet address QR code" />
-          <div class="address-box" style="margin-top: 0.75rem">
-            <span>{{ shortenAddress(overview.address, 12, 12) }}</span>
-          </div>
-          <button class="btn btn--ghost btn--block" style="margin-top: 0.6rem" @click="copyAddress">
-            Copy address
-          </button>
+          <CopyField
+            style="margin-top: 0.75rem"
+            :value="overview.address"
+            :display="shortenAddress(overview.address, 10, 8)"
+          />
         </div>
 
         <div class="card">
@@ -380,7 +370,7 @@ async function remove(): Promise<void> {
               </div>
               <div v-for="f in secretFields" :key="f.key" class="secret-row">
                 <span class="label">{{ f.label }}</span>
-                <span class="value">{{ secrets[f.key] }}</span>
+                <CopyField :value="secrets[f.key]" wrap />
               </div>
             </div>
           </div>
