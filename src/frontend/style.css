@@ -200,6 +200,11 @@ body.modal-open {
   height: 30px;
 }
 
+.nav__brand:hover {
+  opacity: 0.85;
+  text-decoration: none;
+}
+
 .nav__links {
   display: flex;
   align-items: center;
@@ -294,6 +299,11 @@ body.modal-open {
 
 .footer a {
   color: var(--text-dim);
+}
+
+.footer a:hover {
+  color: var(--text);
+  text-decoration: none;
 }
 
 .footer .sep {
