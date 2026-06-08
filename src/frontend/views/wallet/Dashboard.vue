@@ -24,11 +24,21 @@ const txList = computed(() => {
     .sort((a, b) => b.timestamp - a.timestamp)
 })
 
+function preloadImage(src: string): Promise<void> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.onload = () => resolve()
+    img.onerror = () => resolve()
+    img.src = src
+  })
+}
+
 async function load(): Promise<void> {
   loading.value = true
   error.value = ""
   try {
     await wallet.fetchOverview()
+    await preloadImage(qrSrc)
   } catch (e) {
     if (e instanceof ApiError) {
       if (e.code === "not_created") {
@@ -162,17 +172,18 @@ async function remove(): Promise<void> {
     <div v-else-if="error" class="alert alert--error">{{ error }}</div>
 
     <div v-else-if="overview" class="dash">
-      <!-- Left column -->
-      <div class="stack">
-        <div class="card">
-          <div class="stat__label">Balance</div>
-          <div class="balance__value">
-            {{ fromAtomic(overview.balance) }} <span class="balance__unit">XNV</span>
+      <div class="dash__top">
+        <div class="card dash__balance">
+          <div>
+            <div class="stat__label">Balance</div>
+            <div class="balance__value">
+              {{ fromAtomic(overview.balance) }} <span class="balance__unit">XNV</span>
+            </div>
+            <p class="muted" style="font-size: 0.85rem; margin: 0.25rem 0 0">
+              {{ fromAtomic(overview.unlocked_balance) }} XNV unlocked
+            </p>
           </div>
-          <p class="muted" style="font-size: 0.85rem; margin: 0.25rem 0 0">
-            {{ fromAtomic(overview.unlocked_balance) }} XNV unlocked
-          </p>
-          <div class="stack" style="margin-top: 1rem; gap: 0.5rem">
+          <div class="stack" style="gap: 0.5rem">
             <button class="btn btn--primary btn--block" @click="openSend">Send XNV</button>
             <button class="btn btn--ghost btn--block" @click="load">Refresh</button>
           </div>
@@ -187,17 +198,8 @@ async function remove(): Promise<void> {
             Copy address
           </button>
         </div>
-
-        <div class="card">
-          <div class="card__title">Wallet tools</div>
-          <div class="stack" style="gap: 0.5rem">
-            <button class="btn btn--ghost btn--block" @click="secretsOpen = true">View secrets</button>
-            <button class="btn btn--danger btn--block" @click="deleteOpen = true">Delete wallet</button>
-          </div>
-        </div>
       </div>
 
-      <!-- Right column -->
       <div class="card">
         <div class="card__title">Transactions</div>
         <p v-if="!txList.length" class="muted">No transactions yet.</p>
@@ -224,6 +226,14 @@ async function remove(): Promise<void> {
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card__title">Wallet tools</div>
+        <div class="dash__tools">
+          <button class="btn btn--ghost" @click="secretsOpen = true">View secrets</button>
+          <button class="btn btn--danger" @click="deleteOpen = true">Delete wallet</button>
         </div>
       </div>
     </div>

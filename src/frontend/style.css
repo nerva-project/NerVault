@@ -582,14 +582,41 @@ td.num {
    Wallet dashboard specifics
 ---------------------------------------------------------------------------- */
 .dash {
-  display: grid;
-  grid-template-columns: 320px 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 1.25rem;
-  align-items: start;
+}
+
+.dash__top {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 1.25rem;
+  align-items: stretch;
+}
+
+.dash__balance {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.dash__balance .stack {
+  margin-top: auto;
+}
+
+.dash__tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.dash__tools .btn {
+  flex: 1;
+  min-width: 180px;
 }
 
 @media (max-width: 860px) {
-  .dash {
+  .dash__top {
     grid-template-columns: 1fr;
   }
 }
