@@ -4,6 +4,7 @@ import { useRouter } from "vue-router"
 
 import { api, ApiError, API_BASE } from "../../lib/api"
 import { fromAtomic, formatTimestamp, shortenAddress } from "../../lib/format"
+import BaseModal from "../../components/ui/BaseModal.vue"
 import CopyField from "../../components/CopyField.vue"
 import { useToast } from "../../composables/useToast"
 import { useWalletStore } from "../../stores/wallet"
@@ -303,111 +304,67 @@ async function remove(): Promise<void> {
       </div>
     </div>
 
-    <!-- Send modal -->
-    <Teleport to="body">
-      <Transition name="modal">
-        <div v-if="sendOpen" class="modal" role="dialog" aria-modal="true" @click.self="sendOpen = false">
-          <div class="modal__panel">
-            <button class="modal__close" type="button" aria-label="Close" @click="sendOpen = false">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-            <h2 class="modal__title">Send XNV</h2>
-            <div v-if="sendErr" class="alert alert--error" style="margin-bottom: 1rem">{{ sendErr }}</div>
-            <form @submit.prevent="send">
-              <div class="field">
-                <label for="sa">Destination address</label>
-                <input id="sa" class="input" v-model="sendAddr" autocomplete="off" required />
-              </div>
-              <div class="field">
-                <label for="sm">Amount (or "all")</label>
-                <input id="sm" class="input" v-model="sendAmount" placeholder='e.g. 12.5 or "all"' required />
-              </div>
-              <div class="field">
-                <label for="sp">Payment ID (optional)</label>
-                <input id="sp" class="input" v-model="sendPid" autocomplete="off" />
-              </div>
-              <button class="btn btn--primary btn--block" :disabled="sending">
-                {{ sending ? "Sending…" : "Send transaction" }}
-              </button>
-            </form>
-          </div>
+    <BaseModal :open="sendOpen" title="Send XNV" @close="sendOpen = false">
+      <div v-if="sendErr" class="alert alert--error" style="margin-bottom: 1rem">{{ sendErr }}</div>
+      <form @submit.prevent="send">
+        <div class="field">
+          <label for="sa">Destination address</label>
+          <input id="sa" class="input" v-model="sendAddr" autocomplete="off" required />
         </div>
-      </Transition>
-    </Teleport>
-
-    <!-- Secrets modal -->
-    <Teleport to="body">
-      <Transition name="modal">
-        <div v-if="secretsOpen" class="modal" role="dialog" aria-modal="true" @click.self="closeSecrets">
-          <div class="modal__panel">
-            <button class="modal__close" type="button" aria-label="Close" @click="closeSecrets">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-            <h2 class="modal__title">Wallet secrets</h2>
-
-            <template v-if="!secrets">
-              <p class="modal__lead">
-                Enter your account password to reveal your seed and keys. Never share these with
-                anyone.
-              </p>
-              <div v-if="secretErr" class="alert alert--error" style="margin-bottom: 1rem">{{ secretErr }}</div>
-              <form @submit.prevent="reveal">
-                <div class="field">
-                  <label for="secp">Account password</label>
-                  <input id="secp" class="input" type="password" v-model="secretPass"
-                    autocomplete="current-password" required />
-                </div>
-                <button class="btn btn--primary btn--block" :disabled="secretLoading">
-                  {{ secretLoading ? "Verifying…" : "Reveal secrets" }}
-                </button>
-              </form>
-            </template>
-
-            <div v-else>
-              <div class="alert alert--warning" style="margin-bottom: 1rem">
-                Keep these private. Anyone with your seed can take your funds.
-              </div>
-              <div v-for="f in secretFields" :key="f.key" class="secret-row">
-                <span class="label">{{ f.label }}</span>
-                <CopyField :value="secrets[f.key]" wrap />
-              </div>
-            </div>
-          </div>
+        <div class="field">
+          <label for="sm">Amount (or "all")</label>
+          <input id="sm" class="input" v-model="sendAmount" placeholder='e.g. 12.5 or "all"' required />
         </div>
-      </Transition>
-    </Teleport>
-
-    <!-- Delete modal -->
-    <Teleport to="body">
-      <Transition name="modal">
-        <div v-if="deleteOpen" class="modal" role="dialog" aria-modal="true" @click.self="deleteOpen = false">
-          <div class="modal__panel">
-            <button class="modal__close" type="button" aria-label="Close" @click="deleteOpen = false">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-            <h2 class="modal__title">Delete wallet</h2>
-            <p class="modal__lead">
-              This permanently deletes your wallet data from our servers. If you have funds, make
-              sure you have saved your seed first — this cannot be undone.
-            </p>
-            <div class="stack" style="gap: 0.5rem">
-              <button class="btn btn--danger btn--block" :disabled="deleting" @click="remove">
-                {{ deleting ? "Deleting…" : "Yes, delete my wallet" }}
-              </button>
-              <button class="btn btn--ghost btn--block" @click="deleteOpen = false">Cancel</button>
-            </div>
-          </div>
+        <div class="field">
+          <label for="sp">Payment ID (optional)</label>
+          <input id="sp" class="input" v-model="sendPid" autocomplete="off" />
         </div>
-      </Transition>
-    </Teleport>
+        <button class="btn btn--primary btn--block" :disabled="sending">
+          {{ sending ? "Sending…" : "Send transaction" }}
+        </button>
+      </form>
+    </BaseModal>
+
+    <BaseModal :open="secretsOpen" title="Wallet secrets" @close="closeSecrets">
+      <template v-if="!secrets">
+        <p class="modal__lead">
+          Enter your account password to reveal your seed and keys. Never share these with anyone.
+        </p>
+        <div v-if="secretErr" class="alert alert--error" style="margin-bottom: 1rem">{{ secretErr }}</div>
+        <form @submit.prevent="reveal">
+          <div class="field">
+            <label for="secp">Account password</label>
+            <input id="secp" class="input" type="password" v-model="secretPass"
+              autocomplete="current-password" required />
+          </div>
+          <button class="btn btn--primary btn--block" :disabled="secretLoading">
+            {{ secretLoading ? "Verifying…" : "Reveal secrets" }}
+          </button>
+        </form>
+      </template>
+
+      <div v-else>
+        <div class="alert alert--warning" style="margin-bottom: 1rem">
+          Keep these private. Anyone with your seed can take your funds.
+        </div>
+        <div v-for="f in secretFields" :key="f.key" class="secret-row">
+          <span class="label">{{ f.label }}</span>
+          <CopyField :value="secrets[f.key]" wrap />
+        </div>
+      </div>
+    </BaseModal>
+
+    <BaseModal :open="deleteOpen" title="Delete wallet" @close="deleteOpen = false">
+      <p class="modal__lead">
+        This permanently deletes your wallet data from our servers. If you have funds, make sure you
+        have saved your seed first — this cannot be undone.
+      </p>
+      <div class="stack" style="gap: 0.5rem">
+        <button class="btn btn--danger btn--block" :disabled="deleting" @click="remove">
+          {{ deleting ? "Deleting…" : "Yes, delete my wallet" }}
+        </button>
+        <button class="btn btn--ghost btn--block" @click="deleteOpen = false">Cancel</button>
+      </div>
+    </BaseModal>
   </section>
 </template>
