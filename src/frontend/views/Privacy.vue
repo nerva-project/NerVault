@@ -4,7 +4,7 @@
   <section class="page container page--content legal">
     <header class="pagehead">
       <h1>Privacy Policy</h1>
-      <p class="pagehead__lead">Last updated 8 June 2026</p>
+      <p class="pagehead__lead">What NerVault collects, and how it's used.</p>
     </header>
 
     <section>
