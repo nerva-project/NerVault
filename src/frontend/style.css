@@ -792,6 +792,18 @@ td.num {
   align-items: start;
 }
 
+.dash__tx {
+  display: flex;
+  flex-direction: column;
+  max-height: 21rem;
+}
+
+.dash__tx .table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
 .dash__tools {
   display: flex;
   flex-wrap: wrap;

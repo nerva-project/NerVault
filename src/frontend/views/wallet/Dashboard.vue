@@ -259,7 +259,7 @@ async function remove(): Promise<void> {
           />
         </div>
 
-        <div class="card">
+        <div class="card dash__tx">
           <div class="card__title">Transactions</div>
           <p v-if="!txList.length" class="muted">No transactions yet.</p>
           <div v-else class="table-wrap">
