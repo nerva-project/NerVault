@@ -24,6 +24,10 @@ apply(theme.value)
 
 export function useTheme() {
   function toggle(): void {
+    // Suppress transitions for the frame the theme swaps so colour-animated
+    // elements (e.g. buttons) don't lag/flicker behind the instant variable change.
+    const root = document.documentElement
+    root.classList.add("theme-switching")
     theme.value = theme.value === "light" ? "dark" : "light"
     apply(theme.value)
     try {
@@ -31,6 +35,9 @@ export function useTheme() {
     } catch {
       /* ignore */
     }
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => root.classList.remove("theme-switching"))
+    })
   }
   return { theme, toggle }
 }

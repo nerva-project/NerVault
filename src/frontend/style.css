@@ -130,6 +130,11 @@ a:hover {
   text-decoration: underline;
 }
 
+/* Suppress transitions for the frame the theme is swapped (prevents flicker). */
+.theme-switching * {
+  transition: none !important;
+}
+
 h1,
 h2,
 h3 {
