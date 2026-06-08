@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { nextTick, onUnmounted, ref, watch } from "vue"
 
+import CopyField from "./CopyField.vue"
+
 const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ (e: "close"): void }>()
 
@@ -41,20 +43,7 @@ const fiat = [
   { label: "Buy Me a Coffee", url: "https://www.buymeacoffee.com/sn1f3rt" },
 ]
 
-const copied = ref("")
 const closeEl = ref<HTMLButtonElement | null>(null)
-let timer: number | undefined
-
-async function copy(c: Coin): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(c.address)
-    copied.value = c.ticker
-    clearTimeout(timer)
-    timer = window.setTimeout(() => (copied.value = ""), 1600)
-  } catch {
-    /* ignore */
-  }
-}
 
 function onKey(e: KeyboardEvent): void {
   if (e.key === "Escape") emit("close")
@@ -94,16 +83,14 @@ onUnmounted(() => window.removeEventListener("keydown", onKey))
           <h2 id="support-title" class="modal__title">Support <b>NerVault</b></h2>
           <p class="modal__lead">
             NerVault is free to use, but its development and hosting are not. If you find it useful,
-            please consider chipping in. Tap an address to copy it.
+            please consider chipping in.
           </p>
 
           <div class="donate">
-            <button v-for="c in coins" :key="c.ticker" class="donate__row" type="button" @click="copy(c)">
+            <div v-for="c in coins" :key="c.ticker" class="donate__row">
               <span class="donate__coin">{{ c.label }} <span class="donate__tick">{{ c.ticker }}</span></span>
-              <span class="donate__copy" :class="{ copied: copied === c.ticker }">{{
-                copied === c.ticker ? "Copied" : "Copy" }}</span>
-              <span class="donate__addr">{{ c.address }}</span>
-            </button>
+              <CopyField :value="c.address" wrap />
+            </div>
           </div>
 
           <div class="donate__fiat">
