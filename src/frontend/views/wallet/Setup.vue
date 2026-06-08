@@ -2,6 +2,10 @@
 import { onMounted, ref } from "vue"
 import { useRouter } from "vue-router"
 
+import Alert from "../../components/ui/Alert.vue"
+import Btn from "../../components/ui/Btn.vue"
+import Card from "../../components/ui/Card.vue"
+import FormField from "../../components/ui/FormField.vue"
 import { ApiError } from "../../lib/api"
 import { useWalletStore } from "../../stores/wallet"
 
@@ -56,42 +60,41 @@ async function restore(): Promise<void> {
 
 <template>
   <section class="page container page--narrow">
-    <div class="card">
+    <Card>
       <h1 class="card__title">Set up your wallet</h1>
 
-      <div v-if="error" class="alert alert--error" style="margin-bottom: 1rem">{{ error }}</div>
+      <Alert v-if="error" style="margin-bottom: 1rem">{{ error }}</Alert>
 
       <template v-if="mode === 'choose'">
         <p class="dim">Create a brand-new Nerva wallet, or restore an existing one from its seed.</p>
         <div class="stack" style="margin-top: 1.25rem">
-          <button class="btn btn--primary btn--block" :disabled="loading" @click="create">
+          <Btn variant="primary" block :disabled="loading" @click="create">
             {{ loading ? "Creating…" : "Create a new wallet" }}
-          </button>
-          <button class="btn btn--ghost btn--block" :disabled="loading" @click="mode = 'restore'">
+          </Btn>
+          <Btn variant="ghost" block :disabled="loading" @click="mode = 'restore'">
             Restore from seed
-          </button>
+          </Btn>
         </div>
       </template>
 
       <template v-else>
-        <div class="field">
-          <label for="seed">25-word mnemonic seed</label>
+        <FormField label="25-word mnemonic seed" input-id="seed">
           <textarea id="seed" class="textarea" v-model="seed" placeholder="word1 word2 word3 …"
             autocomplete="off" spellcheck="false"></textarea>
-        </div>
+        </FormField>
         <label class="checkbox">
           <input type="checkbox" v-model="agree" />
           <span>I understand this is a custodial wallet and accept the associated risks.</span>
         </label>
         <div class="stack" style="margin-top: 0.5rem">
-          <button class="btn btn--primary btn--block" :disabled="loading" @click="restore">
+          <Btn variant="primary" block :disabled="loading" @click="restore">
             {{ loading ? "Restoring…" : "Restore wallet" }}
-          </button>
-          <button class="btn btn--ghost btn--block" :disabled="loading" @click="mode = 'choose'">
+          </Btn>
+          <Btn variant="ghost" block :disabled="loading" @click="mode = 'choose'">
             Back
-          </button>
+          </Btn>
         </div>
       </template>
-    </div>
+    </Card>
   </section>
 </template>

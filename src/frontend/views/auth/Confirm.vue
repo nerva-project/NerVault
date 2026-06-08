@@ -2,6 +2,9 @@
 import { onMounted, ref } from "vue"
 import { RouterLink, useRoute, useRouter } from "vue-router"
 
+import Alert from "../../components/ui/Alert.vue"
+import Card from "../../components/ui/Card.vue"
+import Spinner from "../../components/ui/Spinner.vue"
 import { api, ApiError } from "../../lib/api"
 import { useAuthStore } from "../../stores/auth"
 
@@ -31,23 +34,22 @@ onMounted(async () => {
 
 <template>
   <section class="page container page--narrow">
-    <div class="card center">
+    <Card class="center">
       <h1 class="card__title">Account confirmation</h1>
 
       <div v-if="state === 'loading'">
-        <div class="spinner"></div>
-        <p class="dim">Confirming your account…</p>
+        <Spinner label="Confirming your account…" />
       </div>
 
       <div v-else-if="state === 'success'">
-        <div class="alert alert--success">{{ message }}</div>
+        <Alert variant="success">{{ message }}</Alert>
         <p class="dim" style="margin-top: 1rem">Redirecting…</p>
       </div>
 
       <div v-else>
-        <div class="alert alert--error">{{ message }}</div>
+        <Alert>{{ message }}</Alert>
         <p style="margin-top: 1rem"><RouterLink to="/login">Back to login</RouterLink></p>
       </div>
-    </div>
+    </Card>
   </section>
 </template>

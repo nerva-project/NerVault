@@ -565,6 +565,12 @@ body.modal-open {
   color: var(--text-dim);
 }
 
+.field__error {
+  margin: 0.1rem 0 0;
+  font-size: 0.82rem;
+  color: var(--danger);
+}
+
 .input,
 .textarea,
 select {

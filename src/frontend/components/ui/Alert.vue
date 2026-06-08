@@ -1,5 +1,5 @@
 <script setup lang="ts">
-withDefaults(defineProps<{ variant?: "error" | "warning" }>(), { variant: "error" })
+withDefaults(defineProps<{ variant?: "error" | "warning" | "success" }>(), { variant: "error" })
 </script>
 
 <template>

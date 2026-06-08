@@ -2,6 +2,10 @@
 import { ref } from "vue"
 import { RouterLink, useRouter } from "vue-router"
 
+import Alert from "../../components/ui/Alert.vue"
+import Btn from "../../components/ui/Btn.vue"
+import Card from "../../components/ui/Card.vue"
+import FormField from "../../components/ui/FormField.vue"
 import { api, ApiError } from "../../lib/api"
 import { useAuthStore, type User } from "../../stores/auth"
 
@@ -48,30 +52,26 @@ async function submit(): Promise<void> {
 
 <template>
   <section class="page container page--narrow">
-    <div class="card">
+    <Card>
       <h1 class="card__title">Create an account</h1>
 
-      <div v-if="error" class="alert alert--error" style="margin-bottom: 1rem">{{ error }}</div>
+      <Alert v-if="error" style="margin-bottom: 1rem">{{ error }}</Alert>
 
       <form @submit.prevent="submit">
-        <div class="field">
-          <label for="username">Username</label>
+        <FormField label="Username" input-id="username">
           <input id="username" class="input" v-model="username" autocomplete="username" required />
-        </div>
-        <div class="field">
-          <label for="email">Email address</label>
+        </FormField>
+        <FormField label="Email address" input-id="email">
           <input id="email" class="input" type="email" v-model="email" autocomplete="email" required />
-        </div>
-        <div class="field">
-          <label for="password">Password</label>
+        </FormField>
+        <FormField label="Password" input-id="password">
           <input id="password" class="input" type="password" v-model="password"
             autocomplete="new-password" required />
-        </div>
-        <div class="field">
-          <label for="confirm">Confirm password</label>
+        </FormField>
+        <FormField label="Confirm password" input-id="confirm">
           <input id="confirm" class="input" type="password" v-model="confirmPassword"
             autocomplete="new-password" required />
-        </div>
+        </FormField>
 
         <label class="checkbox">
           <input type="checkbox" v-model="reviewed" />
@@ -83,14 +83,14 @@ async function submit(): Promise<void> {
           </span>
         </label>
 
-        <button class="btn btn--primary btn--block" :disabled="loading">
+        <Btn type="submit" variant="primary" block :disabled="loading">
           {{ loading ? "Creating account…" : "Register" }}
-        </button>
+        </Btn>
       </form>
 
       <p class="dim" style="margin-top: 1rem; font-size: 0.9rem">
         Already have an account? <RouterLink to="/login">Login</RouterLink>
       </p>
-    </div>
+    </Card>
   </section>
 </template>

@@ -2,6 +2,10 @@
 import { ref } from "vue"
 import { RouterLink } from "vue-router"
 
+import Alert from "../../components/ui/Alert.vue"
+import Btn from "../../components/ui/Btn.vue"
+import Card from "../../components/ui/Card.vue"
+import FormField from "../../components/ui/FormField.vue"
 import { api, ApiError } from "../../lib/api"
 import { useToast } from "../../composables/useToast"
 
@@ -28,30 +32,29 @@ async function submit(): Promise<void> {
 
 <template>
   <section class="page container page--narrow">
-    <div class="card">
+    <Card>
       <h1 class="card__title">Reset password</h1>
 
-      <div v-if="done" class="alert alert--success">
+      <Alert v-if="done" variant="success">
         If that email is registered and confirmed, a reset link has been sent. Please check your
         Junk/Spam folder.
-      </div>
+      </Alert>
 
       <template v-else>
-        <div v-if="error" class="alert alert--error" style="margin-bottom: 1rem">{{ error }}</div>
+        <Alert v-if="error" style="margin-bottom: 1rem">{{ error }}</Alert>
         <form @submit.prevent="submit">
-          <div class="field">
-            <label for="email">Email address</label>
+          <FormField label="Email address" input-id="email">
             <input id="email" class="input" type="email" v-model="email" autocomplete="email" required />
-          </div>
-          <button class="btn btn--primary btn--block" :disabled="loading">
+          </FormField>
+          <Btn type="submit" variant="primary" block :disabled="loading">
             {{ loading ? "Sending…" : "Send reset link" }}
-          </button>
+          </Btn>
         </form>
       </template>
 
       <p class="dim" style="margin-top: 1rem; font-size: 0.9rem">
         <RouterLink to="/login">Back to login</RouterLink>
       </p>
-    </div>
+    </Card>
   </section>
 </template>

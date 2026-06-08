@@ -2,6 +2,10 @@
 import { ref } from "vue"
 import { useRoute, useRouter } from "vue-router"
 
+import Alert from "../../components/ui/Alert.vue"
+import Btn from "../../components/ui/Btn.vue"
+import Card from "../../components/ui/Card.vue"
+import FormField from "../../components/ui/FormField.vue"
 import { api, ApiError } from "../../lib/api"
 import { useToast } from "../../composables/useToast"
 
@@ -41,26 +45,24 @@ async function submit(): Promise<void> {
 
 <template>
   <section class="page container page--narrow">
-    <div class="card">
+    <Card>
       <h1 class="card__title">Set a new password</h1>
 
-      <div v-if="error" class="alert alert--error" style="margin-bottom: 1rem">{{ error }}</div>
+      <Alert v-if="error" style="margin-bottom: 1rem">{{ error }}</Alert>
 
       <form @submit.prevent="submit">
-        <div class="field">
-          <label for="password">New password</label>
+        <FormField label="New password" input-id="password">
           <input id="password" class="input" type="password" v-model="password"
             autocomplete="new-password" required />
-        </div>
-        <div class="field">
-          <label for="confirm">Confirm password</label>
+        </FormField>
+        <FormField label="Confirm password" input-id="confirm">
           <input id="confirm" class="input" type="password" v-model="confirm"
             autocomplete="new-password" required />
-        </div>
-        <button class="btn btn--primary btn--block" :disabled="loading">
+        </FormField>
+        <Btn type="submit" variant="primary" block :disabled="loading">
           {{ loading ? "Saving…" : "Change password" }}
-        </button>
+        </Btn>
       </form>
-    </div>
+    </Card>
   </section>
 </template>
