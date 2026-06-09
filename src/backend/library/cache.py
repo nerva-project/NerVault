@@ -6,7 +6,7 @@ from datetime import timedelta
 
 from aiohttp import ClientError, ClientSession
 from redis.asyncio import Redis
-from redis.exceptions import ConnectionError
+from redis.exceptions import RedisError
 
 from backend import config
 
@@ -33,12 +33,10 @@ class Cache:
         try:
             from redis import Redis as Rds
 
-            client = Rds.from_url(config.REDIS_URL)
-            client.ping()
-            del client
-            del Rds
+            with Rds.from_url(config.REDIS_URL) as client:
+                client.ping()
 
-        except ConnectionError:
+        except (RedisError, TimeoutError):
             print("Failed to connect to Redis. Exiting...")
             sys.exit(1)
 
@@ -106,6 +104,8 @@ class Cache:
         try:
             async with ClientSession() as session:
                 async with session.get(url, headers=headers, params=data) as res:
+                    if res.status != 200:
+                        return {}
                     res_json = await res.json()
 
             result: Dict[str, Any] = {
@@ -121,5 +121,5 @@ class Cache:
 
             return result
 
-        except ClientError:
+        except (ClientError, KeyError, TypeError):
             return {}

@@ -45,10 +45,11 @@ dev = [
 
 [tool.ruff]
 line-length = 85
-target-version = "py313"
+target-version = "py312"
 
 [tool.ruff.lint]
-select = ["I"]
+select = ["E", "F", "I"]
+ignore = ["E501"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["backend"]
@@ -67,7 +68,7 @@ packages = ["src/backend"]
 files = ["src/backend"]
 mypy_path = "src"
 explicit_package_bases = true
-python_version = "3.13"
+python_version = "3.12"
 strict = true
 
 [[tool.mypy.overrides]]

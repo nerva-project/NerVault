@@ -15,6 +15,7 @@ from password_validator import PasswordValidator
 from quart_rate_limiter import RateLimiter, limit_blueprint
 from werkzeug.exceptions import HTTPException
 from pymongo.asynchronous.database import AsyncDatabase
+from quart_rate_limiter.redis_store import RedisStore
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
 
 from backend.utils.csrf import init_csrf
@@ -72,8 +73,13 @@ async def create_app() -> Quart:
 
     cache = Cache()
 
-    # Initialize rate limiting (per-client, keyed by originating IP)
-    RateLimiter(app, key_function=_rate_limit_key)
+    # Initialize rate limiting (per-client, keyed by originating IP);
+    # backed by Redis so limits survive restarts and span multiple workers
+    RateLimiter(
+        app,
+        key_function=_rate_limit_key,
+        store=RedisStore(app.config["REDIS_URL"]),
+    )
 
     # Initialize double-submit CSRF protection
     init_csrf(app)
@@ -143,10 +149,13 @@ async def create_app() -> Quart:
             async def _cleanup_loop() -> None:
                 while True:
                     await asyncio.sleep(3600)
-                    await docker.cleanup()
-                    print("[INFO] Cleaned up expired wallet containers")
+                    try:
+                        await docker.cleanup()
+                        app.logger.info("Cleaned up expired wallet containers")
+                    except Exception:
+                        app.logger.exception("Failed to clean up wallet containers")
 
-            asyncio.ensure_future(_cleanup_loop())
+            app.add_background_task(_cleanup_loop)
 
         # Background task: probe the SMTP server without blocking startup.
         @app.before_serving
@@ -167,7 +176,7 @@ async def create_app() -> Quart:
                 except SMTPException:
                     app.logger.warning("Could not connect to the SMTP server")
 
-            asyncio.ensure_future(_check())
+            app.add_background_task(_check)
 
         # Background task: warm the coin-info cache so the first page load is fast.
         @app.before_serving
@@ -178,7 +187,7 @@ async def create_app() -> Quart:
                 except Exception:
                     app.logger.warning("Could not warm the coin info cache")
 
-            asyncio.ensure_future(_warm())
+            app.add_background_task(_warm)
 
         # CLI commands
         @app.cli.command("reset_wallet")
@@ -198,7 +207,7 @@ async def create_app() -> Quart:
                 await user.clear_wallet_data()
                 print(f"Wallet data cleared for user {user.username}")
 
-            asyncio.get_event_loop().run_until_complete(__reset_wallet())
+            asyncio.run(__reset_wallet())
 
         @app.cli.command("maintenance")
         @click.argument("mode")
@@ -229,7 +238,7 @@ async def create_app() -> Quart:
                 else:
                     print("[USAGE] quart maintenance enable/disable ")
 
-            asyncio.get_event_loop().run_until_complete(__maintenance())
+            asyncio.run(__maintenance())
 
         # Error handling
         @app.errorhandler(Unauthorized)

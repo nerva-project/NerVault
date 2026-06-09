@@ -30,7 +30,7 @@ class User(AuthUser):
         self.password: str = ""
         self.register_date: datetime = datetime.now(UTC)
         self.confirmed: bool = False
-        self.confirmed_at: datetime = datetime.fromtimestamp(0)
+        self.confirmed_at: datetime = datetime.fromtimestamp(0, UTC)
         self.wallet_password: Optional[str] = ""
         self.wallet_created: bool = False
         self.wallet_connected: bool = False

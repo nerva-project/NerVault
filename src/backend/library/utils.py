@@ -69,7 +69,9 @@ def sort_transactions(transactions: Dict[str, Any]) -> Dict[str, Dict[str, Any]]
                 "fee": t["fee"],
             }
 
-    for tx_id, tx_data in sorted(txs.items(), key=lambda x: x[1]["timestamp"]):
+    for tx_id, tx_data in sorted(
+        txs.items(), key=lambda x: (x[1]["timestamp"], x[0])
+    ):
         if tx_data["type"] == "in":
             total += tx_data["amount"]
         elif tx_data["type"] == "out":

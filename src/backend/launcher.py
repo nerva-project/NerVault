@@ -23,7 +23,7 @@ else:
 loop: asyncio.AbstractEventLoop = asyncio.new_event_loop()
 asyncio.set_event_loop(loop)
 
-app: Quart = loop.run_until_complete(asyncio.gather(create_app()))[0]
+app: Quart = loop.run_until_complete(create_app())
 
 
 def main() -> None:

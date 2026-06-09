@@ -15,6 +15,7 @@ from quart_auth import (
 )
 from qrcode.main import QRCode
 from qrcode.constants import ERROR_CORRECT_H
+from quart_rate_limiter import rate_limit
 
 from backend import config
 from backend.factory import cache, bcrypt, daemon, docker
@@ -30,6 +31,19 @@ from . import wallet_bp
 current_user: User = _current_user  # type: ignore[assignment]
 
 QR_LOGO_PATH = Path(__file__).resolve().parents[2] / "assets" / "nerva-qr.png"
+
+SENSITIVE_IP_LIMIT = 10
+SENSITIVE_IP_PERIOD = timedelta(minutes=1)
+SENSITIVE_ACCOUNT_LIMIT = 5
+SENSITIVE_ACCOUNT_PERIOD = timedelta(minutes=15)
+
+
+async def _account_rate_limit_key() -> str:
+    """Rate-limit key based on the authenticated account, for abuse protection."""
+    if current_user.auth_id:
+        return str(current_user.auth_id).strip().lower()
+
+    return request.headers.get("CF-Connecting-IP") or request.access_route[0]
 
 
 def _wallet_rpc(timeout: int | None = None) -> Wallet:
@@ -370,6 +384,12 @@ async def _qr() -> Response:
 
 
 @wallet_bp.route("/transfer", methods=["POST"])
+@rate_limit(SENSITIVE_IP_LIMIT, SENSITIVE_IP_PERIOD)
+@rate_limit(
+    SENSITIVE_ACCOUNT_LIMIT,
+    SENSITIVE_ACCOUNT_PERIOD,
+    key_function=_account_rate_limit_key,
+)
 @login_required
 @check_confirmed
 async def _transfer() -> tuple[Response, int]:
@@ -407,6 +427,25 @@ async def _transfer() -> tuple[Response, int]:
             decimal_amount = Decimal(amount_raw)
             if not decimal_amount.is_finite() or decimal_amount <= 0:
                 raise InvalidOperation
+
+        except (InvalidOperation, ValueError):
+            await capture_event(current_user.username, "tx_fail_amount_invalid")
+            return jsonify(
+                {"status": "error", "error": "Invalid Nerva amount specified."}
+            ), 400
+
+        exponent = decimal_amount.normalize().as_tuple().exponent
+        if isinstance(exponent, int) and -exponent > 12:
+            await capture_event(current_user.username, "tx_fail_amount_precision")
+            return jsonify(
+                {
+                    "status": "error",
+                    "error": "Amount has more than 12 decimal places "
+                    "(pico precision).",
+                }
+            ), 400
+
+        try:
             amount = to_atomic(decimal_amount)
             if amount <= 0:
                 raise InvalidOperation
@@ -427,8 +466,9 @@ async def _transfer() -> tuple[Response, int]:
 
         tx = await wallet.transfer(address, amount, payment_id=payment_id)
 
-    if "message" in tx:
-        msg_lower = tx["message"].replace(" ", "_").lower()
+    if not (tx.get("tx_hash") or tx.get("tx_hash_list")):
+        message = tx.get("message", "unknown")
+        msg_lower = str(message).replace(" ", "_").lower()
         await capture_event(current_user.username, f"tx_fail_{msg_lower}")
         return jsonify(
             {
@@ -445,6 +485,12 @@ async def _transfer() -> tuple[Response, int]:
 
 
 @wallet_bp.route("/secrets", methods=["POST"])
+@rate_limit(SENSITIVE_IP_LIMIT, SENSITIVE_IP_PERIOD)
+@rate_limit(
+    SENSITIVE_ACCOUNT_LIMIT,
+    SENSITIVE_ACCOUNT_PERIOD,
+    key_function=_account_rate_limit_key,
+)
 @login_required
 @check_confirmed
 async def _secrets() -> tuple[Response, int]:

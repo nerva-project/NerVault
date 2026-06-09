@@ -1,5 +1,6 @@
 from typing import Any
 
+import asyncio
 import datetime
 from datetime import timedelta
 
@@ -116,7 +117,9 @@ async def _register() -> tuple[Response, int]:
         pass
 
     try:
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(total=5)
+        ) as session:
             async with session.get(
                 f"https://block-temporary-email.com/check/email/{email}",
                 headers={
@@ -133,7 +136,7 @@ async def _register() -> tuple[Response, int]:
                             "emails are not allowed.",
                         }
                     ), 400
-    except aiohttp.ClientError:
+    except (aiohttp.ClientError, asyncio.TimeoutError):
         pass
 
     if not schema.validate(password):

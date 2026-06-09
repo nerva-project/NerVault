@@ -22,11 +22,16 @@ async def _info() -> tuple[Response, int]:
     """
     Returns node information and cached coin market data for the home page.
     """
+    try:
+        node = await daemon.get_info()
+    except Exception:
+        node = {}
+
     return jsonify(
         {
             "status": "success",
             "result": {
-                "node": (await daemon.get_info()),
+                "node": node,
                 "coin": (await cache.get_coin_info()),
             },
         }
