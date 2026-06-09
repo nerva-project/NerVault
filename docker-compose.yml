@@ -5,8 +5,10 @@ services:
       target: api
     restart: unless-stopped
     depends_on:
-      - redis
-      - docker-socket-proxy
+      redis:
+        condition: service_healthy
+      docker-socket-proxy:
+        condition: service_started
     environment:
       # Orchestrate wallet containers through the least-privilege socket proxy.
       DOCKER_HOST: tcp://docker-socket-proxy:2375
@@ -27,7 +29,8 @@ services:
       target: web
     restart: unless-stopped
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     networks:
       - nervault
     ports:
@@ -36,6 +39,13 @@ services:
   redis:
     image: valkey/valkey:8-alpine
     restart: unless-stopped
+    command: ["valkey-server", "--save", "60", "1", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
     networks:
       - nervault
     volumes:
