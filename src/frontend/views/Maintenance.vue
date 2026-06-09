@@ -3,6 +3,7 @@ import { onMounted, onUnmounted } from "vue"
 import { useRouter } from "vue-router"
 
 import { api } from "../lib/api"
+import { clearMaintenanceCache } from "../router"
 
 const router = useRouter()
 let timer: number | undefined
@@ -10,7 +11,10 @@ let timer: number | undefined
 async function check(): Promise<void> {
   try {
     const res = await api.get<{ maintenance: boolean }>("/meta/maintenance")
-    if (!res.result?.maintenance) router.replace({ name: "home" })
+    if (!res.result?.maintenance) {
+      clearMaintenanceCache()
+      router.replace({ name: "home" })
+    }
   } catch {
     /* ignore */
   }

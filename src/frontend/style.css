@@ -1120,6 +1120,9 @@ td.num {
 }
 
 .toast {
+  width: 100%;
+  text-align: left;
+  font: inherit;
   padding: 0.75rem 1rem;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);

@@ -12,16 +12,6 @@ export interface WalletStatus {
   ready: boolean
 }
 
-export interface Transfer {
-  txid: string
-  type: string
-  amount: number
-  fee: number
-  timestamp: number
-  payment_id?: string
-  height?: number
-}
-
 export interface SortedTx {
   type: string
   amount: number
@@ -34,7 +24,6 @@ export interface WalletOverview {
   email: string
   balance: number
   unlocked_balance: number
-  transfers: Transfer[]
   sorted_transactions: Record<string, SortedTx>
   price: number
   wallet_height: number

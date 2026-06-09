@@ -8,6 +8,7 @@ export interface ApiEnvelope<T> {
   result?: T
   message?: string
   error?: string
+  code?: string
 }
 
 export class ApiError extends Error {
@@ -45,12 +46,17 @@ async function request<T>(
     if (token) headers[CSRF_HEADER] = token
   }
 
-  const res = await fetch(BASE + path, {
-    method,
-    headers,
-    credentials: "include",
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  })
+  let res: Response
+  try {
+    res = await fetch(BASE + path, {
+      method,
+      headers,
+      credentials: "include",
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    })
+  } catch {
+    throw new ApiError("Network error. Please check your connection.", 0)
+  }
 
   let data: ApiEnvelope<T> = { status: "error" }
   try {
@@ -63,7 +69,7 @@ async function request<T>(
     throw new ApiError(
       data.error || `Request failed (${res.status})`,
       res.status,
-      (data as { code?: string }).code,
+      data.code,
     )
   }
 

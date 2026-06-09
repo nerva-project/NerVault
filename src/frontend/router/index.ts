@@ -1,6 +1,34 @@
 import { createRouter, createWebHistory } from "vue-router"
 
+import { api } from "../lib/api"
 import { useAuthStore } from "../stores/auth"
+
+const MAINTENANCE_TTL = 10000
+let maintenanceCache: { value: boolean; at: number } | null = null
+
+async function isMaintenance(): Promise<boolean> {
+  if (maintenanceCache && Date.now() - maintenanceCache.at < MAINTENANCE_TTL) {
+    return maintenanceCache.value
+  }
+  try {
+    const res = await api.get<{ maintenance: boolean }>("/meta/maintenance")
+    const value = res.result?.maintenance ?? false
+    maintenanceCache = { value, at: Date.now() }
+    return value
+  } catch {
+    return false
+  }
+}
+
+export function clearMaintenanceCache(): void {
+  maintenanceCache = null
+}
+
+export function safeRedirect(next: unknown): string | null {
+  if (typeof next !== "string") return null
+  if (!next.startsWith("/") || next.startsWith("//")) return null
+  return next
+}
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -82,6 +110,10 @@ export const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
+  if (to.name !== "maintenance" && (await isMaintenance())) {
+    return { name: "maintenance" }
+  }
+
   const auth = useAuthStore()
 
   if (!auth.ready) {

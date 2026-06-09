@@ -39,7 +39,7 @@ async function logout(): Promise<void> {
       </RouterLink>
 
       <button class="icon-btn nav__toggle" type="button" aria-label="Toggle menu"
-        @click="menuOpen = !menuOpen">
+        :aria-expanded="menuOpen" aria-controls="nav-links" @click="menuOpen = !menuOpen">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
           <line x1="3" y1="6" x2="21" y2="6" />
           <line x1="3" y1="12" x2="21" y2="12" />
@@ -47,7 +47,7 @@ async function logout(): Promise<void> {
         </svg>
       </button>
 
-      <nav class="nav__links" :class="{ open: menuOpen }">
+      <nav id="nav-links" class="nav__links" :class="{ open: menuOpen }">
         <RouterLink class="nav__link" to="/" @click="closeMenu">Home</RouterLink>
         <RouterLink class="nav__link" to="/faq" @click="closeMenu">FAQ</RouterLink>
 

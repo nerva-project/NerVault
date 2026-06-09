@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue"
+import { computed, onMounted, onUnmounted, ref, watch } from "vue"
 import { useRouter } from "vue-router"
 
 import { api, ApiError, API_BASE } from "../../lib/api"
@@ -36,7 +36,7 @@ const fiat = computed(() => {
 
 const synced = computed(() => {
   const o = overview.value
-  if (!o || !o.network_height) return true
+  if (!o || !o.network_height) return false
   return o.wallet_height >= o.network_height - 1
 })
 
@@ -57,11 +57,27 @@ const sessionLeft = computed(() => {
   return `${Math.floor(ms / 1000)}s`
 })
 
+let expiring = false
+function expireSession(): void {
+  if (expiring) return
+  expiring = true
+  wallet.reset()
+  router.replace({ name: "wallet-loading" })
+}
+
+watch(sessionLeft, (left) => {
+  if (left === "expired") expireSession()
+})
+
 async function keepAlive(): Promise<void> {
   try {
     await wallet.keepAlive()
     toast.success("Session extended.")
   } catch (e) {
+    if (e instanceof ApiError && (e.code === "not_connected" || e.status === 401)) {
+      expireSession()
+      return
+    }
     toast.error(e instanceof ApiError ? e.message : "Could not extend session.")
   }
 }
@@ -94,8 +110,8 @@ async function load(): Promise<void> {
         router.replace({ name: "wallet-setup" })
         return
       }
-      if (e.code === "not_connected" || e.code === "not_ready") {
-        router.replace({ name: "wallet-loading" })
+      if (e.code === "not_connected" || e.code === "not_ready" || e.status === 401) {
+        expireSession()
         return
       }
       error.value = e.message

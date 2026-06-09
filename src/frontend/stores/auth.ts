@@ -6,8 +6,6 @@ export interface User {
   username: string
   email: string
   confirmed: boolean
-  wallet_created: boolean
-  wallet_connected: boolean
 }
 
 interface AuthState {

@@ -7,6 +7,7 @@ import Btn from "../../components/ui/Btn.vue"
 import Card from "../../components/ui/Card.vue"
 import FormField from "../../components/ui/FormField.vue"
 import { api, ApiError } from "../../lib/api"
+import { safeRedirect } from "../../router"
 import { useAuthStore, type User } from "../../stores/auth"
 
 const router = useRouter()
@@ -28,7 +29,7 @@ async function submit(): Promise<void> {
     })
     auth.setUser(res.result ?? null)
 
-    const next = typeof route.query.next === "string" ? route.query.next : null
+    const next = safeRedirect(route.query.next)
     if (next) {
       router.push(next)
     } else if (auth.isConfirmed) {
