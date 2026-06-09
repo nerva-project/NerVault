@@ -15,7 +15,9 @@ from quart_auth import (
 )
 from qrcode.main import QRCode
 from qrcode.constants import ERROR_CORRECT_H
+from redis.exceptions import LockError
 from quart_rate_limiter import rate_limit
+from redis.asyncio.lock import Lock
 
 from backend import config
 from backend.factory import cache, bcrypt, daemon, docker
@@ -44,6 +46,23 @@ async def _account_rate_limit_key() -> str:
         return str(current_user.auth_id).strip().lower()
 
     return request.headers.get("CF-Connecting-IP") or request.access_route[0]
+
+
+async def _acquire_wallet_lock(username: str) -> Lock | None:
+    """Acquire a per-user lock serializing wallet lifecycle operations.
+
+    Returns the lock if acquired, or None if another operation already holds it.
+    """
+    lock = cache.redis.lock(f"wallet-lock:{username}", timeout=60, blocking=False)
+    return lock if await lock.acquire() else None
+
+
+async def _release_wallet_lock(lock: Lock) -> None:
+    """Release a wallet lock, tolerating an already-expired lock."""
+    try:
+        await lock.release()
+    except LockError:
+        pass
 
 
 def _wallet_rpc(timeout: int | None = None) -> Wallet:
@@ -106,6 +125,7 @@ async def _setup() -> tuple[Response, int]:
     data = await request.get_json(silent=True) or {}
     mode = str(data.get("mode") or "create").strip().lower()
 
+    seed: str | None
     if mode == "restore":
         try:
             seed = validate_seed(str(data.get("seed") or "").lower())
@@ -117,23 +137,40 @@ async def _setup() -> tuple[Response, int]:
                     "25-word Nerva mnemonic seed phrase.",
                 }
             ), 400
-
-        container = await docker.create_wallet(current_user.username, seed)
         event = "restore_wallet"
 
     elif mode == "create":
-        container = await docker.create_wallet(current_user.username)
+        seed = None
         event = "create_wallet"
 
     else:
         return jsonify({"status": "error", "error": "Invalid setup mode."}), 400
 
-    await cache.store_data(f"init_wallet_{current_user.username}", 30, container)
-    await capture_event(current_user.username, event)
+    lock = await _acquire_wallet_lock(current_user.username)
+    if lock is None:
+        return jsonify(
+            {
+                "status": "error",
+                "error": "A wallet operation is already in progress.",
+                "code": "in_progress",
+            }
+        ), 409
 
-    await current_user.load()
-    current_user.wallet_created = True
-    await current_user.save()
+    try:
+        await current_user.load()
+        if current_user.wallet_created:
+            return jsonify(
+                {"status": "error", "error": "Wallet already exists."}
+            ), 400
+
+        container = await docker.create_wallet(current_user.username, seed)
+        await cache.store_data(f"init_wallet_{current_user.username}", 30, container)
+        await capture_event(current_user.username, event)
+
+        current_user.wallet_created = True
+        await current_user.save()
+    finally:
+        await _release_wallet_lock(lock)
 
     return jsonify(
         {"status": "success", "message": "Wallet setup has started."}
@@ -155,22 +192,45 @@ async def _connect() -> tuple[Response, int]:
             {"status": "error", "error": "Wallet is already connected."}
         ), 400
 
-    container = await docker.start_wallet(current_user.username)
+    lock = await _acquire_wallet_lock(current_user.username)
+    if lock is None:
+        return jsonify(
+            {
+                "status": "error",
+                "error": "A wallet operation is already in progress.",
+                "code": "in_progress",
+            }
+        ), 409
 
     try:
-        port = docker.rpc_port(container)
-    except TypeError:
-        return jsonify(
-            {"status": "error", "error": "Failed to connect wallet."}
-        ), 500
+        await current_user.load()
+        if not current_user.wallet_created:
+            return jsonify(
+                {"status": "error", "error": "Wallet not yet created."}
+            ), 400
+        if current_user.wallet_connected:
+            return jsonify(
+                {"status": "error", "error": "Wallet is already connected."}
+            ), 400
 
-    current_user.wallet_connected = docker.container_exists(container)
-    current_user.wallet_port = port
-    current_user.wallet_container = container
-    current_user.wallet_started_at = datetime.now(UTC)
-    await current_user.save()
+        container = await docker.start_wallet(current_user.username)
 
-    await capture_event(current_user.username, "start_wallet")
+        try:
+            port = docker.rpc_port(container)
+        except TypeError:
+            return jsonify(
+                {"status": "error", "error": "Failed to connect wallet."}
+            ), 500
+
+        current_user.wallet_connected = docker.container_exists(container)
+        current_user.wallet_port = port
+        current_user.wallet_container = container
+        current_user.wallet_started_at = datetime.now(UTC)
+        await current_user.save()
+
+        await capture_event(current_user.username, "start_wallet")
+    finally:
+        await _release_wallet_lock(lock)
 
     return jsonify(
         {"status": "success", "message": "Wallet has been connected."}

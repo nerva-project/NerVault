@@ -118,18 +118,27 @@ class Docker:
 
         if not self.volume_exists(volume_name):
             self.client.volumes.create(name=volume_name, driver="local")
-        container = self.client.containers.run(
-            self.nerva_docker_img,
-            entrypoint=entrypoint,
-            auto_remove=True,
-            name=f"init_wallet_{u.username}",
-            remove=True,
-            detach=True,
-            volumes={volume_name: {"bind": "/wallet", "mode": "rw"}},
-            network=self.wallet_network,
-            extra_hosts=self.extra_hosts,
-        )
-        return container.short_id
+
+        container_name = f"init_wallet_{u.username}"
+        try:
+            container = self.client.containers.run(
+                self.nerva_docker_img,
+                entrypoint=entrypoint,
+                auto_remove=True,
+                name=container_name,
+                remove=True,
+                detach=True,
+                volumes={volume_name: {"bind": "/wallet", "mode": "rw"}},
+                network=self.wallet_network,
+                extra_hosts=self.extra_hosts,
+            )
+            return container.short_id
+
+        except APIError as e:
+            if str(e).startswith("409"):
+                container = self.client.containers.get(container_name)
+                return container.short_id
+            raise
 
     async def start_wallet(self, username: str) -> str:
         """
