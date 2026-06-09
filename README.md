@@ -113,9 +113,11 @@ dev server (`127.0.0.1:3000`, proxying `/v1` to the backend) together. Open
 <http://localhost:3000>.
 
 Useful targets: `make dev` (backend only), `make lint`, `make typecheck`
-(`mypy src/backend` + `vue-tsc`), `make image` (pull the wallet image),
+(`mypy src/backend`; run `npm run typecheck` for backend mypy + frontend
+`vue-tsc`), `make image` (pull the wallet image),
 `make maintenance-enable` / `make maintenance-disable`,
-`make reset-wallet <username>`.
+`make reset-wallet <username>`. `make prod` runs the app directly on the host
+(hypercorn, no Docker) — the Deployment section covers the containerised path.
 
 ## Deployment
 
