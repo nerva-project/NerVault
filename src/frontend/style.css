@@ -583,6 +583,70 @@ body.modal-open {
   color: var(--danger);
 }
 
+.field__label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.field__row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.field__row .input {
+  flex: 1;
+}
+
+.infotip {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+  color: var(--muted);
+  cursor: help;
+  outline: none;
+}
+
+.infotip:hover,
+.infotip:focus-visible {
+  color: var(--accent);
+}
+
+.infotip__icon {
+  width: 15px;
+  height: 15px;
+}
+
+.infotip__bubble {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  width: max-content;
+  max-width: 240px;
+  padding: 0.55rem 0.7rem;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  font-weight: 400;
+  line-height: 1.4;
+  white-space: normal;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s ease;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.infotip:hover .infotip__bubble,
+.infotip:focus-visible .infotip__bubble,
+.infotip:focus-within .infotip__bubble {
+  opacity: 1;
+  visibility: visible;
+}
+
 .input,
 .textarea,
 select {

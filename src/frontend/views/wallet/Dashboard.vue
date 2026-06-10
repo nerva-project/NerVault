@@ -171,6 +171,12 @@ function openSend(): void {
   sendOpen.value = true
 }
 
+function generatePaymentId(): void {
+  const bytes = new Uint8Array(8)
+  crypto.getRandomValues(bytes)
+  sendPid.value = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")
+}
+
 async function send(): Promise<void> {
   sendErr.value = ""
   sending.value = true
@@ -350,11 +356,22 @@ async function remove(): Promise<void> {
         <FormField label="Destination address" input-id="sa">
           <input id="sa" class="input" v-model="sendAddr" autocomplete="off" required />
         </FormField>
-        <FormField label='Amount (or "all")' input-id="sm">
+        <FormField
+          label="Amount"
+          input-id="sm"
+          hint='Amount of XNV to send, e.g. 12.5 (up to 12 decimal places). Type "all" to send your entire unlocked balance.'
+        >
           <input id="sm" class="input" v-model="sendAmount" placeholder='e.g. 12.5 or "all"' required />
         </FormField>
-        <FormField label="Payment ID (optional)" input-id="sp">
-          <input id="sp" class="input" v-model="sendPid" autocomplete="off" />
+        <FormField
+          label="Payment ID (optional)"
+          input-id="sp"
+          hint="An optional 16-character hex tag some exchanges or services require to credit your deposit. Leave it empty unless the recipient asks for one."
+        >
+          <div class="field__row">
+            <input id="sp" class="input" v-model="sendPid" autocomplete="off" />
+            <Btn variant="ghost" @click="generatePaymentId">Generate</Btn>
+          </div>
         </FormField>
         <Btn type="submit" variant="primary" block :disabled="sending">
           {{ sending ? "Sending…" : "Send transaction" }}
