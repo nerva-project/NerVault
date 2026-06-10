@@ -342,14 +342,20 @@ async def _overview() -> tuple[Response, int]:
         for tx in transactions:
             # Any still-locked output (a received tx, or the change from a sent
             # one) unlocks SPENDABLE_AGE blocks after its block, unless a longer
-            # custom unlock height is set.
+            # custom unlock height is set. Unconfirmed (pool) txs have no height
+            # yet, so estimate the lock from the current tip.
             if not tx.get("locked"):
                 continue
-            unlock_height = int(tx.get("height") or 0) + SPENDABLE_AGE
+            height = int(tx.get("height") or 0) or wallet_height
+            unlock_height = height + SPENDABLE_AGE
             unlock_time = int(tx.get("unlock_time") or 0)
             if 0 < unlock_time < 500_000_000:
                 unlock_height = max(unlock_height, unlock_time)
             blocks_to_unlock = max(blocks_to_unlock, unlock_height - wallet_height)
+        # Locked balance with nothing pinning a future unlock height yet (e.g. a
+        # just-sent change tx still unconfirmed) — show a full lock rather than 0.
+        if blocks_to_unlock <= 0:
+            blocks_to_unlock = SPENDABLE_AGE
 
     await capture_event(current_user.username, "load_dashboard")
 
