@@ -39,7 +39,7 @@ SENSITIVE_IP_PERIOD = timedelta(minutes=1)
 SENSITIVE_ACCOUNT_LIMIT = 5
 SENSITIVE_ACCOUNT_PERIOD = timedelta(minutes=15)
 
-# Confirmations an incoming Nerva transfer needs before its funds unlock.
+# Blocks an output stays locked after its block before it becomes spendable.
 SPENDABLE_AGE = 10
 
 
@@ -340,13 +340,16 @@ async def _overview() -> tuple[Response, int]:
     blocks_to_unlock = 0
     if balance > unlocked_balance:
         for tx in transactions:
-            if tx.get("type") != "in":
+            # Any still-locked output (a received tx, or the change from a sent
+            # one) unlocks SPENDABLE_AGE blocks after its block, unless a longer
+            # custom unlock height is set.
+            if not tx.get("locked"):
                 continue
-            confirmations = int(tx.get("confirmations") or 0)
-            if confirmations < SPENDABLE_AGE:
-                blocks_to_unlock = max(
-                    blocks_to_unlock, SPENDABLE_AGE - confirmations
-                )
+            unlock_height = int(tx.get("height") or 0) + SPENDABLE_AGE
+            unlock_time = int(tx.get("unlock_time") or 0)
+            if 0 < unlock_time < 500_000_000:
+                unlock_height = max(unlock_height, unlock_time)
+            blocks_to_unlock = max(blocks_to_unlock, unlock_height - wallet_height)
 
     await capture_event(current_user.username, "load_dashboard")
 
