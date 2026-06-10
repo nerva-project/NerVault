@@ -825,7 +825,26 @@ td.num {
 .dash__session-val {
   font-size: 1.1rem;
   font-weight: 600;
-  margin-top: 0.5rem;
+}
+
+/* Fixed-height value zone so each column's value shares a baseline. */
+.dash__statval {
+  min-height: 2.4rem;
+  margin-top: 0.35rem;
+  display: flex;
+  align-items: flex-end;
+}
+
+.dash__statsub {
+  margin-top: 0.45rem;
+}
+
+p.dash__statsub {
+  font-size: 0.85rem;
+}
+
+.dash__statsub + .dash__statsub {
+  margin-top: 0.15rem;
 }
 
 .btn--sm {

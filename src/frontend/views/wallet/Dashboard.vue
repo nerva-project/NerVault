@@ -261,31 +261,29 @@ async function remove(): Promise<void> {
         <div class="dash__stats">
           <div>
             <div class="stat__label">Balance</div>
-            <div class="balance__value">
-              {{ fromAtomic(overview.balance) }} <span class="balance__unit">XNV</span>
+            <div class="dash__statval">
+              <div class="balance__value">
+                {{ fromAtomic(overview.balance) }} <span class="balance__unit">XNV</span>
+              </div>
             </div>
-            <p v-if="balanceLine1" class="muted" style="font-size: 0.85rem; margin: 0.3rem 0 0">
-              {{ balanceLine1 }}
-            </p>
-            <p v-if="lockedLine" class="muted" style="font-size: 0.85rem; margin: 0.15rem 0 0">
-              {{ lockedLine }}
-            </p>
+            <p v-if="balanceLine1" class="muted dash__statsub">{{ balanceLine1 }}</p>
+            <p v-if="lockedLine" class="muted dash__statsub">{{ lockedLine }}</p>
           </div>
           <div>
             <div class="stat__label">Network</div>
-            <div style="margin-top: 0.5rem">
+            <div class="dash__statval">
               <Badge :variant="synced ? 'in' : 'out'">
                 {{ synced ? "Synced" : `Syncing · ${blocksBehind.toLocaleString()} behind` }}
               </Badge>
             </div>
-            <p class="muted" style="font-size: 0.85rem; margin: 0.5rem 0 0">
-              Block {{ overview.network_height.toLocaleString() }}
-            </p>
+            <p class="muted dash__statsub">Block {{ overview.network_height.toLocaleString() }}</p>
           </div>
           <div>
             <div class="stat__label">Session</div>
-            <div class="dash__session-val">{{ sessionLeft ?? "—" }}</div>
-            <Btn variant="ghost" size="sm" style="margin-top: 0.5rem" @click="keepAlive">
+            <div class="dash__statval">
+              <span class="dash__session-val">{{ sessionLeft ?? "—" }}</span>
+            </div>
+            <Btn variant="ghost" size="sm" class="dash__statsub" @click="keepAlive">
               Keep alive
             </Btn>
           </div>
