@@ -40,16 +40,22 @@ const locked = computed(() => {
   return Math.max(0, o.balance - o.unlocked_balance)
 })
 
-const balanceNote = computed(() => {
+const balanceLine1 = computed(() => {
   const o = overview.value
   if (!o) return ""
   const parts: string[] = []
   if (fiat.value) parts.push(`≈ ${fiat.value}`)
-  if (locked.value > 0) {
-    parts.push(`${fromAtomic(o.unlocked_balance)} unlocked`)
-    parts.push(`${fromAtomic(locked.value)} locked`)
-  }
+  if (locked.value > 0) parts.push(`${fromAtomic(o.unlocked_balance)} unlocked`)
   return parts.join(" · ")
+})
+
+const lockedLine = computed(() => {
+  const o = overview.value
+  if (!o || locked.value <= 0) return ""
+  const n = o.blocks_to_unlock
+  const suffix =
+    n > 0 ? ` · unlocks in ~${n} ${n === 1 ? "block" : "blocks"}` : ""
+  return `${fromAtomic(locked.value)} locked${suffix}`
 })
 
 const synced = computed(() => {
@@ -258,8 +264,11 @@ async function remove(): Promise<void> {
             <div class="balance__value">
               {{ fromAtomic(overview.balance) }} <span class="balance__unit">XNV</span>
             </div>
-            <p v-if="balanceNote" class="muted" style="font-size: 0.85rem; margin: 0.3rem 0 0">
-              {{ balanceNote }}
+            <p v-if="balanceLine1" class="muted" style="font-size: 0.85rem; margin: 0.3rem 0 0">
+              {{ balanceLine1 }}
+            </p>
+            <p v-if="lockedLine" class="muted" style="font-size: 0.85rem; margin: 0.15rem 0 0">
+              {{ lockedLine }}
             </p>
           </div>
           <div>

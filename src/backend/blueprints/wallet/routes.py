@@ -39,6 +39,9 @@ SENSITIVE_IP_PERIOD = timedelta(minutes=1)
 SENSITIVE_ACCOUNT_LIMIT = 5
 SENSITIVE_ACCOUNT_PERIOD = timedelta(minutes=15)
 
+# Confirmations an incoming Nerva transfer needs before its funds unlock.
+SPENDABLE_AGE = 10
+
 
 async def _account_rate_limit_key() -> str:
     """Rate-limit key based on the authenticated account, for abuse protection."""
@@ -334,6 +337,17 @@ async def _overview() -> tuple[Response, int]:
             started + timedelta(seconds=config.PERMANENT_SESSION_LIFETIME)
         ).isoformat()
 
+    blocks_to_unlock = 0
+    if balance > unlocked_balance:
+        for tx in transactions:
+            if tx.get("type") != "in":
+                continue
+            confirmations = int(tx.get("confirmations") or 0)
+            if confirmations < SPENDABLE_AGE:
+                blocks_to_unlock = max(
+                    blocks_to_unlock, SPENDABLE_AGE - confirmations
+                )
+
     await capture_event(current_user.username, "load_dashboard")
 
     return jsonify(
@@ -349,6 +363,7 @@ async def _overview() -> tuple[Response, int]:
                 "price": coin.get("current_price", 0),
                 "wallet_height": wallet_height,
                 "network_height": network_height,
+                "blocks_to_unlock": blocks_to_unlock,
                 "expires_at": expires_at,
             },
         }

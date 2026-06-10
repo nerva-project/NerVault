@@ -28,6 +28,7 @@ export interface WalletOverview {
   price: number
   wallet_height: number
   network_height: number
+  blocks_to_unlock: number
   expires_at: string | null
 }
 
