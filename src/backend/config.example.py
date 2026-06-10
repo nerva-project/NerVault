@@ -54,3 +54,4 @@ DEBUG = False
 TEMPLATES_AUTO_RELOAD = False
 QUART_AUTH_COOKIE_SECURE = True
 QUART_AUTH_COOKIE_SAMESITE = "Lax"
+QUART_AUTH_DURATION = 604800  # Auth session lifetime in seconds (7 days)

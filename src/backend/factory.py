@@ -63,6 +63,14 @@ async def create_app() -> Quart:
     except RuntimeError:
         app.config.from_pyfile("config.py")
 
+    if app.config.get("SECRET_KEY") in (None, "", "secret_key") or app.config.get(
+        "PASSWORD_SALT"
+    ) in (None, "", "password_salt"):
+        raise RuntimeError(
+            "SECRET_KEY and PASSWORD_SALT must be set to unique secret values "
+            "(the config.example.py placeholders are not allowed)."
+        )
+
     global bcrypt, cache, daemon, db, docker, schema
 
     # Initialize bcrypt for password hashing
@@ -101,8 +109,11 @@ async def create_app() -> Quart:
     # Set up password validation schema
     schema = PasswordValidator()
     schema.min(8).max(
-        100
+        72
     ).has().uppercase().has().lowercase().has().digits().has().symbols().has().no().spaces()
+
+    # Cap the auth session lifetime (quart-auth defaults to 1 year)
+    app.config.setdefault("QUART_AUTH_DURATION", 7 * 24 * 60 * 60)
 
     # Initialize authentication manager
     auth_manager = QuartAuth(app)
