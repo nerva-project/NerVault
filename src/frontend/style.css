@@ -864,10 +864,6 @@ td.num {
 }
 
 @media (max-width: 860px) {
-  .dash__mid {
-    grid-template-columns: 1fr;
-  }
-
   .dash__stats {
     grid-template-columns: 1fr;
     gap: 1.25rem;
@@ -884,6 +880,12 @@ td.num {
 
   .dash__actions .btn {
     flex: 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .dash__mid {
+    grid-template-columns: 1fr;
   }
 }
 
