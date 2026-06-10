@@ -14,6 +14,18 @@ function close(): void {
   emit("close")
 }
 
+function onPanelClick(e: MouseEvent): void {
+  // Clicking anything that isn't an actual control (padding, title, labels,
+  // gaps) blurs the focused field so its highlight clears on the first click.
+  // preventDefault cancels a label's default action so it doesn't instead
+  // shift focus to its own input.
+  const target = e.target as HTMLElement | null
+  if (target && !target.closest("input, textarea, select, button, a, [tabindex]")) {
+    e.preventDefault()
+    ;(document.activeElement as HTMLElement | null)?.blur()
+  }
+}
+
 function focusables(): HTMLElement[] {
   if (!panel.value) return []
   return Array.from(
@@ -78,7 +90,7 @@ onUnmounted(() => {
     <Transition name="modal">
       <div v-if="open" class="modal" role="dialog" aria-modal="true"
         :aria-labelledby="title || $slots.title ? titleId : undefined" @click.self="close">
-        <div ref="panel" class="modal__panel">
+        <div ref="panel" class="modal__panel" @click="onPanelClick">
           <button ref="closeEl" class="modal__close" type="button" aria-label="Close" @click="close">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               stroke-linecap="round" stroke-linejoin="round">
