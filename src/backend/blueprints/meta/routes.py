@@ -1,8 +1,3 @@
-from importlib.metadata import (
-    PackageNotFoundError,
-    version as pkg_version,
-)
-
 from quart import Response, jsonify
 from quart_rate_limiter import rate_exempt
 
@@ -10,11 +5,6 @@ from backend.factory import db, cache, daemon, docker
 from backend.library.helpers import on_maintenance
 
 from . import meta_bp
-
-try:
-    APP_VERSION = pkg_version("NerVault")
-except PackageNotFoundError:
-    APP_VERSION = "0.0.0"
 
 
 @meta_bp.route("/info", methods=["GET"])
@@ -48,7 +38,6 @@ async def _status() -> tuple[Response, int]:
         {
             "status": "success",
             "result": {
-                "version": APP_VERSION,
                 "redis": (await cache.redis.ping()),  # type: ignore[misc]
                 "mongodb": (await db.client.admin.command("ping")) == {"ok": 1.0},
                 "docker": docker.client.ping(),

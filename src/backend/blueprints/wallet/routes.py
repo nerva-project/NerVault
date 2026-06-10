@@ -420,7 +420,7 @@ async def _qr() -> Response:
         return Response(status=409)
 
     address = await wallet.get_address()
-    uri = f"nerva:{address}?tx_description={current_user.email}"
+    uri = f"nerva:{address}"
 
     qr = QRCode(version=1, error_correction=ERROR_CORRECT_H)
     qr.add_data(uri)
