@@ -34,6 +34,24 @@ const fiat = computed(() => {
   return usd.toLocaleString(undefined, { style: "currency", currency: "USD" })
 })
 
+const locked = computed(() => {
+  const o = overview.value
+  if (!o) return 0
+  return Math.max(0, o.balance - o.unlocked_balance)
+})
+
+const balanceNote = computed(() => {
+  const o = overview.value
+  if (!o) return ""
+  const parts: string[] = []
+  if (fiat.value) parts.push(`≈ ${fiat.value}`)
+  if (locked.value > 0) {
+    parts.push(`${fromAtomic(o.unlocked_balance)} unlocked`)
+    parts.push(`${fromAtomic(locked.value)} locked`)
+  }
+  return parts.join(" · ")
+})
+
 const synced = computed(() => {
   const o = overview.value
   if (!o || !o.network_height) return false
@@ -240,8 +258,8 @@ async function remove(): Promise<void> {
             <div class="balance__value">
               {{ fromAtomic(overview.balance) }} <span class="balance__unit">XNV</span>
             </div>
-            <p class="muted" style="font-size: 0.85rem; margin: 0.3rem 0 0">
-              <template v-if="fiat">≈ {{ fiat }} · </template>{{ fromAtomic(overview.unlocked_balance) }} unlocked
+            <p v-if="balanceNote" class="muted" style="font-size: 0.85rem; margin: 0.3rem 0 0">
+              {{ balanceNote }}
             </p>
           </div>
           <div>
