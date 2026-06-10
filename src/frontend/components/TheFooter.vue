@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { RouterLink } from "vue-router"
 
-const year = new Date().getFullYear()
+const START_YEAR = 2024
+const currentYear = new Date().getFullYear()
+const year =
+  currentYear > START_YEAR ? `${START_YEAR}–${currentYear}` : `${START_YEAR}`
 </script>
 
 <template>
