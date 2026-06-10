@@ -62,16 +62,29 @@ function onKey(e: KeyboardEvent): void {
   }
 }
 
+function lockScroll(): void {
+  // Pad the body by the removed scrollbar's width so the page doesn't shift.
+  const gap = window.innerWidth - document.documentElement.clientWidth
+  if (gap > 0) document.body.style.paddingRight = `${gap}px`
+  document.body.classList.add("modal-open")
+}
+
+function unlockScroll(): void {
+  document.body.classList.remove("modal-open")
+  document.body.style.paddingRight = ""
+}
+
 watch(
   () => props.open,
   async (o) => {
-    document.body.classList.toggle("modal-open", o)
     if (o) {
+      lockScroll()
       lastFocused = document.activeElement as HTMLElement | null
       window.addEventListener("keydown", onKey)
       await nextTick()
       closeEl.value?.focus()
     } else {
+      unlockScroll()
       window.removeEventListener("keydown", onKey)
       lastFocused?.focus()
       lastFocused = null
@@ -81,7 +94,7 @@ watch(
 
 onUnmounted(() => {
   window.removeEventListener("keydown", onKey)
-  document.body.classList.remove("modal-open")
+  unlockScroll()
 })
 </script>
 

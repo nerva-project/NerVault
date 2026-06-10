@@ -75,9 +75,6 @@
 
 html {
   scroll-behavior: smooth;
-  /* Always reserve the scrollbar gutter so locking scroll for a modal doesn't
-     reclaim its width and shift the page sideways. */
-  scrollbar-gutter: stable;
 }
 
 body {
