@@ -75,6 +75,9 @@
 
 html {
   scroll-behavior: smooth;
+  /* Always reserve the scrollbar gutter so locking scroll for a modal doesn't
+     reclaim its width and shift the page sideways. */
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -746,6 +749,11 @@ select {
   background: var(--danger-bg);
   color: var(--danger);
   border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+}
+
+.btn--danger:hover:not(:disabled) {
+  border-color: var(--danger);
+  text-decoration: none;
 }
 
 .btn--block {
