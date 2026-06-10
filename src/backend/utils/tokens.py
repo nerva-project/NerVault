@@ -1,43 +1,59 @@
-from typing import Optional
+from typing import Any, Optional
+
+import hashlib
 
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 from backend import config
 
+CONFIRM_SALT = "email-confirmation"
+RESET_SALT = "password-reset"
 
-def generate_token(email_id: str) -> str:
+
+def generate_token(payload: Any, salt: str) -> str:
     """
-    Generates a time-sensitive token for the given email ID.
+    Generates a time-sensitive, namespaced token for the given payload.
 
     Args:
-        email_id (str): The email address for which the token will be generated.
+        payload (Any): The value to sign (e.g. an email, or [email, fingerprint]).
+        salt (str): Namespace salt — confirmation and reset tokens use different
+            salts so a token minted for one purpose cannot be used for the other.
 
     Returns:
         str: The generated token.
     """
     serializer = URLSafeTimedSerializer(config.SECRET_KEY)
-    return serializer.dumps(email_id, salt=config.PASSWORD_SALT)
+    return serializer.dumps(payload, salt=f"{config.PASSWORD_SALT}:{salt}")
 
 
-def validate_token(token: str, expiration: int = 3600) -> Optional[str]:
+def validate_token(token: str, salt: str, expiration: int = 3600) -> Optional[Any]:
     """
-    Validates the given token and returns the email ID if valid, otherwise returns False.
+    Validates a token and returns its payload, or None if invalid/expired.
 
     Args:
-        token (str): The token to be validated.
-        expiration (int): The token expiration time in seconds (default is 3600 seconds).
+        token (str): The token to validate.
+        salt (str): The namespace salt the token was generated with.
+        expiration (int): Maximum token age in seconds (default 3600).
 
     Returns:
-        Optional[str]: The email ID if the token is valid, otherwise False.
+        Optional[Any]: The signed payload if valid, otherwise None.
     """
     serializer = URLSafeTimedSerializer(config.SECRET_KEY)
 
     try:
-        email_id = serializer.loads(
-            token, salt=config.PASSWORD_SALT, max_age=expiration
+        return serializer.loads(
+            token, salt=f"{config.PASSWORD_SALT}:{salt}", max_age=expiration
         )
-
     except BadSignature:
         return None
 
-    return str(email_id)
+
+def password_fingerprint(password_hash: str) -> str:
+    """
+    Stable fingerprint of a password hash that changes whenever the password
+    does. Binding a reset token to this makes the token single-use: once the
+    password is changed the fingerprint no longer matches, so the spent (or any
+    older) reset link is rejected.
+    """
+    digest = hashlib.sha256(f"{config.SECRET_KEY}:{password_hash}".encode())
+    return digest.hexdigest()[:16]

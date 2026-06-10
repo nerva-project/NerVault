@@ -19,7 +19,13 @@ from backend import config
 from backend.factory import bcrypt, docker, schema
 from backend.utils.mail import send_email
 from backend.utils.models import User
-from backend.utils.tokens import generate_token, validate_token
+from backend.utils.tokens import (
+    RESET_SALT,
+    CONFIRM_SALT,
+    generate_token,
+    validate_token,
+    password_fingerprint,
+)
 from backend.library.helpers import capture_event
 from backend.library.validation import is_valid_username
 
@@ -36,6 +42,10 @@ PASSWORD_POLICY = (
     "Password must be at least 8 characters long and contain at least one "
     "uppercase letter, one lowercase letter, one digit, and one symbol."
 )
+
+# A valid bcrypt hash compared against on unknown usernames so login timing does
+# not reveal whether an account exists.
+_DUMMY_PASSWORD_HASH = "$2b$12$RRy7tt6i02lRca/5bFoKO.3GCKBPyVWDGZ/76LNSWG8SSY8IeIkoq"
 
 
 async def _account_rate_limit_key() -> str:
@@ -147,7 +157,7 @@ async def _register() -> tuple[Response, int]:
     user.password = bcrypt.generate_password_hash(password).decode("utf8")
     await user.save()
 
-    token = generate_token(user.email)
+    token = generate_token(user.email, CONFIRM_SALT)
     confirm_url = f"{config.FRONTEND_URL}/confirm/{token}"
     template = await render_template("email/activate.html", confirm_url=confirm_url)
     await send_email(user.email, "Account Activation", template)
@@ -176,7 +186,7 @@ async def _confirm(token: str) -> tuple[Response, int]:
     """
     Confirms a user's account using the provided token.
     """
-    email = validate_token(token)
+    email = validate_token(token, CONFIRM_SALT)
 
     try:
         if not email:
@@ -221,7 +231,7 @@ async def _resend() -> tuple[Response, int]:
             {"status": "error", "error": "Account already confirmed."}
         ), 400
 
-    token = generate_token(current_user.email)
+    token = generate_token(current_user.email, CONFIRM_SALT)
     confirm_url = f"{config.FRONTEND_URL}/confirm/{token}"
     html = await render_template("email/activate.html", confirm_url=confirm_url)
     await send_email(current_user.email, "Account Activation", html)
@@ -261,6 +271,9 @@ async def _login() -> tuple[Response, int]:
     try:
         await user.load()
     except ValueError:
+        # Equalise timing with the valid-user path so a fast response does not
+        # reveal that the username is unregistered.
+        bcrypt.check_password_hash(_DUMMY_PASSWORD_HASH, password)
         return jsonify(
             {"status": "error", "error": "Invalid username or password."}
         ), 401
@@ -326,7 +339,9 @@ async def _reset() -> tuple[Response, int]:
     if not user.confirmed:
         return generic, 200
 
-    token = generate_token(user.email)
+    token = generate_token(
+        [user.email, password_fingerprint(user.password)], RESET_SALT
+    )
     reset_url = f"{config.FRONTEND_URL}/reset/{token}"
     html = await render_template("email/reset_password.html", reset_url=reset_url)
     await send_email(user.email, "Password Reset", html)
@@ -344,15 +359,19 @@ async def _reset_token(token: str) -> tuple[Response, int]:
     """
     Sets a new password using a valid reset token.
     """
-    email = validate_token(token)
+    payload = validate_token(token, RESET_SALT)
 
-    if not email:
-        return jsonify(
-            {
-                "status": "error",
-                "error": "The reset link is either invalid or has expired.",
-            }
-        ), 400
+    invalid = jsonify(
+        {
+            "status": "error",
+            "error": "The reset link is either invalid or has expired.",
+        }
+    )
+
+    if not isinstance(payload, list) or len(payload) != 2:
+        return invalid, 400
+
+    email, fingerprint = payload
 
     data = await request.get_json(silent=True) or {}
     password = str(data.get("password") or "")
@@ -369,12 +388,10 @@ async def _reset_token(token: str) -> tuple[Response, int]:
     try:
         user = await User.get_by_email(email)
     except ValueError:
-        return jsonify(
-            {
-                "status": "error",
-                "error": "The reset link is either invalid or has expired.",
-            }
-        ), 400
+        return invalid, 400
+
+    if password_fingerprint(user.password) != fingerprint:
+        return invalid, 400
 
     user.password = bcrypt.generate_password_hash(password).decode("utf8")
     await user.save()
