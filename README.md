@@ -164,8 +164,22 @@ proxies to the published web container.
   sensitive and keep it off the public internet (only `web` is published, to
   loopback, behind the edge).
 - **Rate-limit IP.** The limiter keys on `CF-Connecting-IP`, falling back to the
-  forwarded route. Put Cloudflare in front for a trustworthy client IP; a bare
-  `X-Forwarded-For` can otherwise be spoofed.
+  forwarded route. Because that header is client-settable, the origin **must**
+  be firewalled to accept HTTPS only from Cloudflare's published IP ranges —
+  otherwise a request sent directly to the origin can forge `CF-Connecting-IP`
+  to rotate its key and evade the per-IP limits. (The per-account limits on
+  login/reset/confirm key on the submitted username/email instead, so account
+  brute-force stays bounded regardless.) Scope the edge accordingly, e.g.:
+  ```bash
+  # Allow 443 only from Cloudflare; deny direct-to-origin HTTPS.
+  for cidr in $(curl -s https://www.cloudflare.com/ips-v4); do \
+    ufw allow from "$cidr" to any port 443 proto tcp; done
+  ufw deny 443/tcp
+  ```
+- **Secrets & config.** `config.py` (or the `QUART_SECRETS`-pointed file) holds
+  live credentials — keep it `0600`, outside the repo, and out of any image
+  layer/backup. The app refuses to boot if `SECRET_KEY`/`PASSWORD_SALT` are left
+  at the `config.example.py` placeholders.
 
 ## Funding
 
