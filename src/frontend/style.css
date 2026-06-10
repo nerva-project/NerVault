@@ -429,6 +429,10 @@ body.modal-open {
   display: none;
 }
 
+.nav__icons {
+  display: contents;
+}
+
 @media (max-width: 720px) {
   .nav__links {
     position: fixed;
@@ -450,6 +454,14 @@ body.modal-open {
   .nav__toggle {
     display: inline-flex;
     margin-left: auto;
+  }
+
+  .nav__icons {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
   }
 }
 
