@@ -132,6 +132,22 @@ class Wallet:
             )
         )["result"]["integrated_address"]
 
+    async def make_integrated_address(self, payment_id: str = "") -> Dict[str, Any]:
+        """
+        Builds an integrated address for this wallet's own address.
+
+        Args:
+            payment_id (str): The 16-hex payment ID to embed. An empty string
+                makes the wallet generate a random one.
+
+        Returns:
+            Dict[str, Any]: The result, including the integrated_address and the
+            (possibly generated) payment_id.
+        """
+        return (  # type: ignore[no-any-return]
+            await self.rpc.make_integrated_address(payment_id=payment_id)
+        )["result"]
+
     async def validate_address(self, address: str) -> bool:
         """
         Validates a given address.

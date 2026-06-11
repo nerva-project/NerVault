@@ -1,5 +1,6 @@
 from typing import Any
 
+import base64
 import string
 from io import BytesIO
 from asyncio import sleep
@@ -80,6 +81,28 @@ def _wallet_rpc(timeout: int | None = None) -> Wallet:
     if timeout is not None:
         kwargs["timeout"] = timeout
     return Wallet(**kwargs)
+
+
+def _branded_qr(data: str) -> bytes:
+    """Renders a PNG QR code for the given data with the Nerva logo centred."""
+    qr = QRCode(version=1, error_correction=ERROR_CORRECT_H)
+    qr.add_data(data)
+    qr.make(fit=True)
+
+    qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGBA")  # type: ignore[union-attr]
+
+    logo_size = 256
+    logo = Image.open(QR_LOGO_PATH).convert("RGBA").resize((logo_size, logo_size))
+    qr_width, qr_height = qr_img.size
+    qr_img.paste(
+        logo,
+        ((qr_width - logo_size) // 2, (qr_height - logo_size) // 2),
+        mask=logo,
+    )
+
+    buffer = BytesIO()
+    qr_img.save(buffer, format="PNG")
+    return buffer.getvalue()
 
 
 @wallet_bp.route("/status", methods=["GET"])
@@ -444,27 +467,57 @@ async def _qr() -> Response:
         return Response(status=409)
 
     address = await wallet.get_address()
-    uri = f"nerva:{address}"
 
-    qr = QRCode(version=1, error_correction=ERROR_CORRECT_H)
-    qr.add_data(uri)
-    qr.make(fit=True)
+    return Response(_branded_qr(f"nerva:{address}"), mimetype="image/png")
 
-    qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGBA")  # type: ignore[union-attr]
 
-    logo_size = 256
-    logo = Image.open(QR_LOGO_PATH).convert("RGBA").resize((logo_size, logo_size))
-    qr_width, qr_height = qr_img.size
-    logo_position = (
-        (qr_width - logo_size) // 2,
-        (qr_height - logo_size) // 2,
-    )
-    qr_img.paste(logo, logo_position, mask=logo)
+@wallet_bp.route("/integrated-address", methods=["POST"])
+@login_required
+@check_confirmed
+async def _integrated_address() -> tuple[Response, int]:
+    """
+    Builds an integrated address (wallet address + payment ID) for receiving,
+    returning the address, the payment ID, and a branded QR for it.
+    """
+    data = await request.get_json(silent=True) or {}
+    payment_id = str(data.get("payment_id") or "").strip().lower()
 
-    buffer = BytesIO()
-    qr_img.save(buffer, format="PNG")
+    if payment_id and (
+        len(payment_id) != 16 or not all(c in string.hexdigits for c in payment_id)
+    ):
+        return jsonify(
+            {
+                "status": "error",
+                "error": "Payment ID must be 16 hexadecimal characters.",
+            }
+        ), 400
 
-    return Response(buffer.getvalue(), mimetype="image/png")
+    wallet = _wallet_rpc()
+
+    if not await wallet.connected:
+        return jsonify(
+            {
+                "status": "error",
+                "error": "Wallet RPC interface is unavailable.",
+                "code": "not_connected",
+            }
+        ), 409
+
+    result = await wallet.make_integrated_address(payment_id)
+    qr = base64.b64encode(
+        _branded_qr(f"nerva:{result['integrated_address']}")
+    ).decode()
+
+    return jsonify(
+        {
+            "status": "success",
+            "result": {
+                "integrated_address": result["integrated_address"],
+                "payment_id": result["payment_id"],
+                "qr": f"data:image/png;base64,{qr}",
+            },
+        }
+    ), 200
 
 
 @wallet_bp.route("/transfer", methods=["POST"])
