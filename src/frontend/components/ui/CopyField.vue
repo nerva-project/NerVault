@@ -5,6 +5,7 @@ defineProps<{
   value: string
   display?: string
   wrap?: boolean
+  loading?: boolean
 }>()
 
 const copied = ref(false)
@@ -23,12 +24,14 @@ async function copy(text: string): Promise<void> {
 </script>
 
 <template>
-  <div class="copyfield">
-    <span class="copyfield__text" :class="{ 'copyfield__text--wrap': wrap }">{{ display ?? value }}</span>
+  <div class="copyfield" :class="{ 'copyfield--loading': loading }">
+    <span v-if="loading" class="copyfield__skel" aria-hidden="true"></span>
+    <span v-else class="copyfield__text" :class="{ 'copyfield__text--wrap': wrap }">{{ display ?? value }}</span>
     <button
       class="copyfield__btn"
       :class="{ 'copyfield__btn--ok': copied }"
       type="button"
+      :disabled="loading"
       :aria-label="copied ? 'Copied' : 'Copy'"
       @click="copy(value)"
     >

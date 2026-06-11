@@ -665,6 +665,47 @@ select {
   outline: none;
 }
 
+.input:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.skel-bar {
+  display: inline-block;
+  vertical-align: middle;
+  width: 100%;
+  height: 0.95rem;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--border) 25%,
+    var(--surface) 50%,
+    var(--border) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.3s linear infinite;
+}
+
+/* Compact the receive-card Payment ID control so it matches the address field
+   (a CopyField sized by its 30px button) sitting right above it. */
+.pid-field .input {
+  padding-block: 0.625rem;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+}
+
+.pid-field .icon-btn {
+  height: auto;
+}
+
+/* Centre the info tooltip over its icon and cap its width so it stays inside
+   the narrow receive card instead of spilling over the transactions card. */
+.pid-field .infotip__bubble {
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 210px;
+}
+
 .textarea {
   resize: vertical;
   min-height: 90px;
@@ -931,7 +972,7 @@ p.dash__statsub {
 .dash__tx {
   display: flex;
   flex-direction: column;
-  max-height: 21rem;
+  /* Height is matched to the receive card at runtime (see Dashboard.vue). */
 }
 
 .dash__tx .table-wrap {
@@ -989,14 +1030,61 @@ p.dash__statsub {
   font-size: 1rem;
 }
 
-.qr {
+.qr-box {
   width: 100%;
   max-width: 240px;
+  aspect-ratio: 1;
   margin: 0 auto;
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: var(--radius-sm);
   background: #fff;
   padding: 0.5rem;
+}
+
+.qr-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.qr-box .spinner {
+  margin: 0;
+}
+
+/* While the QR loads, blend the box into the card instead of flashing white. */
+.qr-box--loading {
+  background: transparent;
+  border: 1px solid var(--border);
+}
+
+.seg {
+  display: inline-flex;
+  gap: 2px;
+  margin-bottom: 1rem;
+  padding: 3px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.seg__btn {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.3rem 0.9rem;
+  border-radius: calc(var(--radius-sm) - 2px);
+  cursor: pointer;
+}
+
+.seg__btn--on {
+  background: var(--surface);
+  color: var(--text);
 }
 
 .copyfield {
@@ -1051,6 +1139,36 @@ p.dash__statsub {
 .copyfield__btn svg {
   width: 16px;
   height: 16px;
+}
+
+.copyfield__btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.copyfield__btn:disabled:hover {
+  background: transparent;
+  color: var(--text-dim);
+}
+
+.copyfield__skel {
+  flex: 1;
+  height: 0.95rem;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--border) 25%,
+    var(--surface) 50%,
+    var(--border) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.3s linear infinite;
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
 }
 
 .secret-row {

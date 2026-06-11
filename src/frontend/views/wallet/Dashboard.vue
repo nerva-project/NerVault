@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from "vue"
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue"
 import { useRouter } from "vue-router"
 
 import { api, ApiError, API_BASE } from "../../lib/api"
@@ -11,6 +11,7 @@ import Btn from "../../components/ui/Btn.vue"
 import Card from "../../components/ui/Card.vue"
 import CopyField from "../../components/ui/CopyField.vue"
 import FormField from "../../components/ui/FormField.vue"
+import InfoTip from "../../components/ui/InfoTip.vue"
 import Spinner from "../../components/ui/Spinner.vue"
 import { useToast } from "../../composables/useToast"
 import { useWalletStore } from "../../stores/wallet"
@@ -22,6 +23,7 @@ const toast = useToast()
 const loading = ref(true)
 const error = ref("")
 const qrSrc = `${API_BASE}/wallet/qr`
+const addrQrLoaded = ref(false)
 
 const overview = computed(() => wallet.overview)
 
@@ -113,21 +115,11 @@ const txList = computed(() => {
     .sort((a, b) => b.timestamp - a.timestamp)
 })
 
-function preloadImage(src: string): Promise<void> {
-  return new Promise((resolve) => {
-    const img = new Image()
-    img.onload = () => resolve()
-    img.onerror = () => resolve()
-    img.src = src
-  })
-}
-
 async function load(): Promise<void> {
   loading.value = true
   error.value = ""
   try {
     await wallet.fetchOverview()
-    await preloadImage(qrSrc)
   } catch (e) {
     if (e instanceof ApiError) {
       if (e.code === "not_created") {
@@ -147,16 +139,111 @@ async function load(): Promise<void> {
   }
 }
 
+function syncCardHeights(): void {
+  const recv = document.querySelector<HTMLElement>(".dash__mid > .center")
+  const tx = document.querySelector<HTMLElement>(".dash__mid > .dash__tx")
+  if (!recv || !tx) return
+  // Side-by-side: match the transactions card to the (dynamic) receive card.
+  // Stacked on mobile, so let it size naturally.
+  tx.style.height = window.innerWidth <= 640 ? "" : `${recv.offsetHeight}px`
+}
+
 let timer: ReturnType<typeof setInterval> | undefined
+let cardRO: ResizeObserver | undefined
 onMounted(() => {
   void load()
   timer = setInterval(() => {
     now.value = Date.now()
   }, 1000)
+  cardRO = new ResizeObserver(() => syncCardHeights())
 })
 onUnmounted(() => {
   if (timer) clearInterval(timer)
+  cardRO?.disconnect()
 })
+
+watch(
+  loading,
+  async (l) => {
+    if (l) return
+    await nextTick()
+    const recv = document.querySelector<HTMLElement>(".dash__mid > .center")
+    if (recv && cardRO) {
+      cardRO.disconnect()
+      cardRO.observe(recv)
+    }
+    syncCardHeights()
+  },
+  { immediate: true },
+)
+
+/* ---- Receive ---- */
+const receiveMode = ref<"address" | "integrated">("address")
+const intAddr = ref("")
+const intQr = ref("")
+const intPid = ref("")
+const intErr = ref("")
+const intLoading = ref(false)
+const intCustomLoad = ref(false)
+
+async function fetchIntegrated(paymentId: string): Promise<void> {
+  intErr.value = ""
+  // A non-empty payment ID came from the user (typed/pasted): keep it visible
+  // and just disable the input while regenerating, rather than shimmering it.
+  intCustomLoad.value = paymentId !== ""
+  intLoading.value = true
+  try {
+    const res = await api.post<{
+      integrated_address: string
+      payment_id: string
+      qr: string
+    }>("/wallet/integrated-address", { payment_id: paymentId })
+    const r = res.result
+    if (r) {
+      intAddr.value = r.integrated_address
+      intQr.value = r.qr
+      intPid.value = r.payment_id
+    }
+  } catch (e) {
+    intErr.value =
+      e instanceof ApiError ? e.message : "Could not generate an integrated address."
+  } finally {
+    intLoading.value = false
+  }
+}
+
+function showIntegrated(): void {
+  receiveMode.value = "integrated"
+  if (!intAddr.value) void fetchIntegrated("")
+}
+
+function regenerateIntegrated(): void {
+  void fetchIntegrated("")
+}
+
+let pidDebounce: ReturnType<typeof setTimeout> | undefined
+function onPidInput(): void {
+  // Apply a typed/pasted payment ID automatically (no Enter needed), debounced
+  // so we don't refetch on every keystroke.
+  if (pidDebounce) clearTimeout(pidDebounce)
+  pidDebounce = setTimeout(() => {
+    const pid = intPid.value.trim().toLowerCase()
+    if (!pid) {
+      intErr.value = ""
+      return
+    }
+    if (/^[0-9a-f]{16}$/.test(pid)) {
+      intErr.value = ""
+      void fetchIntegrated(pid)
+      return
+    }
+    // Only complain once the entry is clearly wrong, not while still typing.
+    intErr.value =
+      pid.length >= 16 || /[^0-9a-f]/.test(pid)
+        ? "Payment ID must be 16 hexadecimal characters."
+        : ""
+  }, 500)
+}
 
 /* ---- Send ---- */
 const sendOpen = ref(false)
@@ -302,12 +389,66 @@ async function remove(): Promise<void> {
 
       <div class="dash__mid">
         <Card class="center">
-          <img class="qr" :src="qrSrc" alt="Wallet address QR code" />
-          <CopyField
-            style="margin-top: 0.75rem"
-            :value="overview.address"
-            :display="shortenAddress(overview.address, 10, 8)"
-          />
+          <div class="seg">
+            <button type="button" class="seg__btn"
+              :class="{ 'seg__btn--on': receiveMode === 'address' }"
+              @click="receiveMode = 'address'">Address</button>
+            <button type="button" class="seg__btn"
+              :class="{ 'seg__btn--on': receiveMode === 'integrated' }"
+              @click="showIntegrated">Integrated</button>
+          </div>
+
+          <template v-if="receiveMode === 'address'">
+            <div class="qr-box" :class="{ 'qr-box--loading': !addrQrLoaded }">
+              <img v-show="addrQrLoaded" class="qr-img" :src="qrSrc"
+                @load="addrQrLoaded = true" alt="Wallet address QR code" />
+              <div v-if="!addrQrLoaded" class="spinner"></div>
+            </div>
+            <CopyField
+              style="margin-top: 0.75rem"
+              :value="overview.address"
+              :display="shortenAddress(overview.address, 10, 8)"
+            />
+          </template>
+
+          <template v-else>
+            <div class="qr-box" :class="{ 'qr-box--loading': intLoading || !intQr }">
+              <img v-if="intQr && !intLoading" class="qr-img" :src="intQr" alt="Integrated address QR code" />
+              <div v-else-if="intLoading" class="spinner"></div>
+            </div>
+            <CopyField
+              style="margin-top: 0.75rem"
+              :value="intAddr"
+              :display="intAddr ? shortenAddress(intAddr, 10, 8) : ''"
+              :loading="intLoading || !intAddr"
+            />
+            <div class="field pid-field" style="width: 100%; margin: 0.6rem 0 0; text-align: left">
+              <div class="field__label">
+                <label for="intpid">Payment ID</label>
+                <InfoTip
+                  text="A tag embedded in the integrated address to identify incoming payments. A random 16-character hex value is filled in for you — type or paste your own to use a specific one (it applies automatically), or use the refresh button for a new random one."
+                />
+              </div>
+              <div class="field__row">
+                <div v-if="intLoading && !intCustomLoad" class="input" aria-hidden="true">
+                  <span class="skel-bar"></span>
+                </div>
+                <input v-else id="intpid" class="input" v-model="intPid" @input="onPidInput"
+                  :disabled="intLoading" placeholder="16-character hex" autocomplete="off"
+                  spellcheck="false" />
+                <button type="button" class="icon-btn" :disabled="intLoading"
+                  title="Generate a random payment ID"
+                  aria-label="Generate a random payment ID" @click="regenerateIntegrated">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M23 4v6h-6M1 20v-6h6" />
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                  </svg>
+                </button>
+              </div>
+              <p v-if="intErr" class="field__error">{{ intErr }}</p>
+            </div>
+          </template>
         </Card>
 
         <Card class="dash__tx" title="Transactions">
