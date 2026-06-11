@@ -31,6 +31,15 @@ async function poll(): Promise<void> {
 
     if (s.connected && s.ready) {
       stop()
+      // The container is up, but the session timer may have lapsed (e.g. the
+      // reaper was down during an outage). Refresh it before handing off so the
+      // dashboard doesn't immediately treat the session as expired and bounce
+      // straight back here in a loop.
+      try {
+        await wallet.keepAlive()
+      } catch {
+        /* non-fatal — the dashboard handles a still-expired session */
+      }
       router.replace({ name: "wallet-dashboard" })
       return
     }
