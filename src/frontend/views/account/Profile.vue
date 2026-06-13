@@ -9,6 +9,7 @@ import BaseModal from "../../components/ui/BaseModal.vue"
 import FormField from "../../components/ui/FormField.vue"
 import PasswordInput from "../../components/ui/PasswordInput.vue"
 import PageHeader from "../../components/ui/PageHeader.vue"
+import TwoFactorField from "../../components/ui/TwoFactorField.vue"
 import { api, ApiError } from "../../lib/api"
 import { useToast } from "../../composables/useToast"
 import { useAuthStore } from "../../stores/auth"
@@ -17,18 +18,19 @@ const auth = useAuthStore()
 const toast = useToast()
 
 const emailModal = ref(false)
-const emailForm = reactive({ password: "", new_email: "" })
+const emailForm = reactive({ password: "", new_email: "", code: "" })
 const emailError = ref("")
 const emailLoading = ref(false)
 
 const pwModal = ref(false)
-const pwForm = reactive({ current: "", password: "", confirm: "" })
+const pwForm = reactive({ current: "", password: "", confirm: "", code: "" })
 const pwError = ref("")
 const pwLoading = ref(false)
 
 function openEmail(): void {
   emailForm.password = ""
   emailForm.new_email = ""
+  emailForm.code = ""
   emailError.value = ""
   emailModal.value = true
 }
@@ -37,6 +39,7 @@ function openPassword(): void {
   pwForm.current = ""
   pwForm.password = ""
   pwForm.confirm = ""
+  pwForm.code = ""
   pwError.value = ""
   pwModal.value = true
 }
@@ -48,6 +51,7 @@ async function submitEmail(): Promise<void> {
     const res = await api.post("/auth/change-email", {
       password: emailForm.password,
       new_email: emailForm.new_email,
+      code: emailForm.code,
     })
     toast.success(res.message || "Confirmation link sent to your new email.")
     emailModal.value = false
@@ -72,6 +76,7 @@ async function submitPassword(): Promise<void> {
       current_password: pwForm.current,
       password: pwForm.password,
       confirm_password: pwForm.confirm,
+      code: pwForm.code,
     })
     toast.success("Your password has been changed.")
     pwModal.value = false
@@ -133,6 +138,7 @@ async function submitPassword(): Promise<void> {
         <FormField label="Current password" input-id="ce-pw">
           <PasswordInput id="ce-pw" v-model="emailForm.password" autocomplete="current-password" required />
         </FormField>
+        <TwoFactorField v-model="emailForm.code" />
         <Btn type="submit" variant="primary" block :disabled="emailLoading">
           {{ emailLoading ? "Sending…" : "Send confirmation link" }}
         </Btn>
@@ -152,6 +158,7 @@ async function submitPassword(): Promise<void> {
         <FormField label="Confirm new password" input-id="cp-confirm">
           <PasswordInput id="cp-confirm" v-model="pwForm.confirm" autocomplete="new-password" required />
         </FormField>
+        <TwoFactorField v-model="pwForm.code" />
         <Btn type="submit" variant="primary" block :disabled="pwLoading">
           {{ pwLoading ? "Saving…" : "Change password" }}
         </Btn>

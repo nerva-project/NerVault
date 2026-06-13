@@ -12,6 +12,7 @@ import Card from "../../components/ui/Card.vue"
 import CopyField from "../../components/ui/CopyField.vue"
 import FormField from "../../components/ui/FormField.vue"
 import PasswordInput from "../../components/ui/PasswordInput.vue"
+import TwoFactorField from "../../components/ui/TwoFactorField.vue"
 import InfoTip from "../../components/ui/InfoTip.vue"
 import Spinner from "../../components/ui/Spinner.vue"
 import { useToast } from "../../composables/useToast"
@@ -390,6 +391,7 @@ const secretPass = ref("")
 const secrets = ref<Record<string, string> | null>(null)
 const secretLoading = ref(false)
 const secretErr = ref("")
+const secretCode = ref("")
 
 const secretFields: { key: string; label: string }[] = [
   { key: "mnemonic_seed", label: "Mnemonic seed" },
@@ -403,6 +405,7 @@ function closeSecrets(): void {
   secretsOpen.value = false
   secrets.value = null
   secretPass.value = ""
+  secretCode.value = ""
   secretErr.value = ""
 }
 
@@ -412,6 +415,7 @@ async function reveal(): Promise<void> {
   try {
     const res = await api.post<Record<string, string>>("/wallet/secrets", {
       password: secretPass.value,
+      code: secretCode.value,
     })
     secrets.value = res.result ?? null
   } catch (e) {
@@ -705,6 +709,7 @@ async function remove(): Promise<void> {
           <FormField label="Account password" input-id="secp">
             <PasswordInput id="secp" v-model="secretPass" autocomplete="current-password" required />
           </FormField>
+          <TwoFactorField v-model="secretCode" />
           <Btn type="submit" variant="primary" block :disabled="secretLoading">
             {{ secretLoading ? "Verifying…" : "Reveal secrets" }}
           </Btn>

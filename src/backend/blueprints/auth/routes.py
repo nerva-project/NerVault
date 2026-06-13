@@ -36,7 +36,7 @@ from backend.utils.tokens import (
     validate_token,
     password_fingerprint,
 )
-from backend.library.helpers import capture_event
+from backend.library.helpers import capture_event, verify_2fa_code
 from backend.utils.decorators import check_confirmed
 from backend.library.validation import is_valid_username
 
@@ -494,10 +494,16 @@ async def _change_password() -> tuple[Response, int]:
     current_password = str(data.get("current_password") or "")
     password = str(data.get("password") or "")
     confirm = str(data.get("confirm_password") or "")
+    code = str(data.get("code") or "")
 
     if not bcrypt.check_password_hash(current_user.password, current_password):
         return jsonify(
             {"status": "error", "error": "Current password is incorrect."}
+        ), 400
+
+    if not await verify_2fa_code(current_user, code):
+        return jsonify(
+            {"status": "error", "error": "Invalid or missing two-factor code."}
         ), 400
 
     if password != confirm:
@@ -675,10 +681,16 @@ async def _change_email() -> tuple[Response, int]:
     data = await request.get_json(silent=True) or {}
     password = str(data.get("password") or "")
     new_email = str(data.get("new_email") or "").strip()
+    code = str(data.get("code") or "")
 
     if not bcrypt.check_password_hash(current_user.password, password):
         return jsonify(
             {"status": "error", "error": "Current password is incorrect."}
+        ), 400
+
+    if not await verify_2fa_code(current_user, code):
+        return jsonify(
+            {"status": "error", "error": "Invalid or missing two-factor code."}
         ), 400
 
     try:
@@ -1067,6 +1079,36 @@ async def _2fa_backup_regenerate() -> tuple[Response, int]:
             "message": "New backup codes have been generated.",
             "result": {"backup_codes": codes},
         }
+    ), 200
+
+
+@auth_bp.route("/2fa/step-up/send", methods=["POST"])
+@rate_limit(
+    SENSITIVE_IP_LIMIT, SENSITIVE_IP_PERIOD, skip_function=_skip_safe_methods
+)
+@login_required
+@check_confirmed
+async def _2fa_step_up_send() -> tuple[Response, int]:
+    """
+    Emails a one-time code to confirm a sensitive action (email 2FA method only).
+    """
+    if current_user.two_factor_method != "email":
+        return jsonify(
+            {"status": "error", "error": "No email code is required."}
+        ), 400
+
+    code = f"{secrets.randbelow(1_000_000):06d}"
+    await cache.store_data(
+        f"2fa:stepup:{current_user.username}", LOGIN_2FA_TTL_MINUTES, code
+    )
+
+    html = await render_template(
+        "email/step_up_code.html", code=code, ttl_minutes=LOGIN_2FA_TTL_MINUTES
+    )
+    await send_email(current_user.email, "Your NerVault Confirmation Code", html)
+
+    return jsonify(
+        {"status": "success", "message": "A code has been sent to your email."}
     ), 200
 
 
