@@ -15,9 +15,9 @@ const year =
     <span class="text-border">&middot;</span>
     <a href="https://nerva.one" target="_blank" rel="noopener">The Nerva Project</a>
     <span class="text-border">&middot;</span>
-    <RouterLink to="/terms">Terms</RouterLink>
+    <RouterLink to="/terms">Terms of Service</RouterLink>
     <span class="text-border">&middot;</span>
-    <RouterLink to="/privacy">Privacy</RouterLink>
+    <RouterLink to="/privacy">Privacy Policy</RouterLink>
     <span class="text-border">&middot;</span>
     <RouterLink to="/faq">FAQ</RouterLink>
   </footer>

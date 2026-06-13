@@ -28,7 +28,7 @@ async function submit(): Promise<void> {
     return
   }
   if (!reviewed.value) {
-    error.value = "Please confirm you have read the FAQ, Terms, and Privacy Policy."
+    error.value = "Please confirm you have read the Terms of Service and Privacy Policy."
     return
   }
 
@@ -77,8 +77,7 @@ async function submit(): Promise<void> {
           <input type="checkbox" v-model="reviewed" class="mt-[0.2rem] accent-accent" />
           <span>
             I have read and agree to the
-            <RouterLink to="/faq" target="_blank">FAQ</RouterLink>,
-            <RouterLink to="/terms" target="_blank">Terms of Service</RouterLink>, and
+            <RouterLink to="/terms" target="_blank">Terms of Service</RouterLink> and
             <RouterLink to="/privacy" target="_blank">Privacy Policy</RouterLink>.
           </span>
         </label>
