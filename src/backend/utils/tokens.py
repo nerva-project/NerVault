@@ -8,6 +8,8 @@ from backend import config
 
 CONFIRM_SALT = "email-confirmation"
 RESET_SALT = "password-reset"
+EMAIL_CHANGE_SALT = "email-change"
+LOGIN_2FA_SALT = "login-2fa"
 
 
 def generate_token(payload: Any, salt: str) -> str:

@@ -220,6 +220,35 @@ async def create_app() -> Quart:
 
             asyncio.run(__reset_wallet())
 
+        @app.cli.command("reset_2fa")
+        @click.argument("username")
+        def _reset_2fa(username: str) -> None:
+            """
+            Clears all two-factor authentication for a given user.
+
+            Args:
+                username (str): The username whose 2FA is to be reset.
+            """
+
+            async def __reset_2fa() -> None:
+                from backend.utils.models import User
+
+                user = User(username=username)
+                try:
+                    await user.load()
+                except ValueError:
+                    print(f"User {username} not found")
+                    return
+
+                user.email_2fa = False
+                user.totp_secret = None
+                user.totp_enabled = False
+                user.backup_codes = []
+                await user.save()
+                print(f"Two-factor authentication reset for user {user.username}")
+
+            asyncio.run(__reset_2fa())
+
         @app.cli.command("maintenance")
         @click.argument("mode")
         def _maintenance(mode: str) -> None:

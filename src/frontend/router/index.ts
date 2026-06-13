@@ -81,10 +81,17 @@ export const router = createRouter({
       component: () => import("../views/auth/Unconfirmed.vue"),
       meta: { requiresAuth: true },
     },
+    { path: "/change-password", redirect: { name: "profile" } },
     {
-      path: "/change-password",
-      name: "change-password",
-      component: () => import("../views/auth/ChangePassword.vue"),
+      path: "/profile",
+      name: "profile",
+      component: () => import("../views/account/Profile.vue"),
+      meta: { requiresAuth: true, requiresConfirmed: true },
+    },
+    {
+      path: "/profile/email/:token",
+      name: "confirm-email-change",
+      component: () => import("../views/account/ConfirmEmailChange.vue"),
       meta: { requiresAuth: true, requiresConfirmed: true },
     },
     {

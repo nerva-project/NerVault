@@ -22,6 +22,7 @@ dependencies = [
     "pymongo==4.16.0",
     "quart-auth==0.11.0",
     "quart-rate-limiter==0.10.0",
+    "pyotp==2.9.0",
     "qrcode[pil]==8.2",
     "email-validator==2.3.0",
     "aiosmtplib==5.1.0",

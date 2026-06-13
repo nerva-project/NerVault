@@ -31,6 +31,10 @@ class User(AuthUser):
         self.register_date: datetime = datetime.now(UTC)
         self.confirmed: bool = False
         self.confirmed_at: datetime = datetime.fromtimestamp(0, UTC)
+        self.email_2fa: bool = False
+        self.totp_secret: Optional[str] = None
+        self.totp_enabled: bool = False
+        self.backup_codes: list[str] = []
         self.wallet_password: Optional[str] = ""
         self.wallet_created: bool = False
         self.wallet_connected: bool = False
@@ -57,6 +61,21 @@ class User(AuthUser):
         """
         return self.confirmed
 
+    @property
+    def two_factor_method(self) -> Optional[str]:
+        """
+        Returns the active two-factor method, or None if 2FA is disabled. The
+        authenticator app (TOTP) supersedes the email method when both are set.
+
+        Returns:
+            Optional[str]: "totp", "email", or None.
+        """
+        if self.totp_enabled:
+            return "totp"
+        if self.email_2fa:
+            return "email"
+        return None
+
     async def save(self) -> None:
         """
         Saves the user data to the database. If the user does not exist, it is created.
@@ -70,6 +89,10 @@ class User(AuthUser):
                     "register_date": self.register_date,
                     "confirmed": self.confirmed,
                     "confirmed_at": self.confirmed_at,
+                    "email_2fa": self.email_2fa,
+                    "totp_secret": self.totp_secret,
+                    "totp_enabled": self.totp_enabled,
+                    "backup_codes": self.backup_codes,
                     "wallet_password": self.wallet_password,
                     "wallet_created": self.wallet_created,
                     "wallet_connected": self.wallet_connected,
@@ -101,6 +124,10 @@ class User(AuthUser):
         self.register_date = user["register_date"]
         self.confirmed = user["confirmed"]
         self.confirmed_at = user["confirmed_at"]
+        self.email_2fa = user.get("email_2fa", False)
+        self.totp_secret = user.get("totp_secret")
+        self.totp_enabled = user.get("totp_enabled", False)
+        self.backup_codes = user.get("backup_codes", [])
         self.wallet_password = user["wallet_password"]
         self.wallet_created = user["wallet_created"]
         self.wallet_connected = user["wallet_connected"]

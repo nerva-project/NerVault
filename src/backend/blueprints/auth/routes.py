@@ -1,9 +1,14 @@
 from typing import Any
 
+import hmac
+import base64
 import asyncio
+import secrets
 import datetime
+from io import BytesIO
 from datetime import timedelta
 
+import pyotp
 import aiohttp
 from quart import Response, jsonify, request, current_app, render_template
 from quart_auth import (
@@ -12,21 +17,27 @@ from quart_auth import (
     current_user as _current_user,
     login_required,
 )
+from qrcode.main import QRCode
 from email_validator import EmailNotValidError, validate_email
+from qrcode.constants import ERROR_CORRECT_M
 from quart_rate_limiter import rate_limit
 
 from backend import config
-from backend.factory import bcrypt, docker, schema
+from backend.factory import cache, bcrypt, docker, schema
 from backend.utils.mail import send_email
+from backend.utils.twofa import hash_codes, verify_and_consume, generate_backup_codes
 from backend.utils.models import User
 from backend.utils.tokens import (
     RESET_SALT,
     CONFIRM_SALT,
+    LOGIN_2FA_SALT,
+    EMAIL_CHANGE_SALT,
     generate_token,
     validate_token,
     password_fingerprint,
 )
 from backend.library.helpers import capture_event
+from backend.utils.decorators import check_confirmed
 from backend.library.validation import is_valid_username
 
 from . import auth_bp
@@ -37,6 +48,11 @@ SENSITIVE_IP_LIMIT = 10
 SENSITIVE_IP_PERIOD = timedelta(minutes=1)
 SENSITIVE_ACCOUNT_LIMIT = 5
 SENSITIVE_ACCOUNT_PERIOD = timedelta(minutes=15)
+
+LOGIN_2FA_TTL_MINUTES = 10
+LOGIN_2FA_TTL = LOGIN_2FA_TTL_MINUTES * 60
+TOTP_VALID_WINDOW = 1
+TOTP_ISSUER = "NerVault"
 
 PASSWORD_POLICY = (
     "Password must be at least 8 characters long and contain at least one "
@@ -68,6 +84,19 @@ async def _skip_safe_methods() -> bool:
     return request.method in ("GET", "HEAD", "OPTIONS")
 
 
+async def _login_2fa_rate_limit_key() -> str:
+    """Rate-limit the 2FA login step per targeted account (decoded from the token)."""
+    data = await request.get_json(silent=True) or {}
+    payload = validate_token(
+        str(data.get("token") or ""), LOGIN_2FA_SALT, LOGIN_2FA_TTL
+    )
+
+    if isinstance(payload, list) and payload:
+        return str(payload[0]).strip().lower()
+
+    return request.headers.get("CF-Connecting-IP") or request.access_route[0]
+
+
 def _user_dict(user: User) -> dict[str, Any]:
     """Returns the safe, client-facing representation of a user."""
     return {
@@ -76,7 +105,37 @@ def _user_dict(user: User) -> dict[str, Any]:
         "confirmed": user.confirmed,
         "wallet_created": user.wallet_created,
         "wallet_connected": user.wallet_connected,
+        "two_factor": {
+            "email": user.email_2fa,
+            "totp": user.totp_enabled,
+            "method": user.two_factor_method,
+        },
     }
+
+
+def _totp_qr_data_uri(uri: str) -> str:
+    """Renders an otpauth:// URI as a base64 PNG data URI for an <img> tag."""
+    qr = QRCode(error_correction=ERROR_CORRECT_M)
+    qr.add_data(uri)
+    qr.make(fit=True)
+
+    img = qr.make_image(fill_color="black", back_color="white").convert("RGBA")  # type: ignore[union-attr]
+    buffer = BytesIO()
+    img.save(buffer, format="PNG")
+
+    encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
+    return f"data:image/png;base64,{encoded}"
+
+
+async def _send_email_login_code(user: User) -> None:
+    """Generates, caches, and emails a one-time login code for email 2FA."""
+    code = f"{secrets.randbelow(1_000_000):06d}"
+    await cache.store_data(f"2fa:login:{user.username}", LOGIN_2FA_TTL_MINUTES, code)
+
+    html = await render_template(
+        "email/two_factor_code.html", code=code, ttl_minutes=LOGIN_2FA_TTL_MINUTES
+    )
+    await send_email(user.email, "Your NerVault Login Code", html)
 
 
 @auth_bp.route("/register", methods=["POST"])
@@ -283,6 +342,25 @@ async def _login() -> tuple[Response, int]:
             {"status": "error", "error": "Invalid username or password."}
         ), 401
 
+    method = user.two_factor_method
+    if method is not None:
+        # Defer the session until the second factor is verified; bind the
+        # challenge to the password so it dies if the password later changes.
+        if method == "email":
+            await _send_email_login_code(user)
+
+        token = generate_token(
+            [user.username, password_fingerprint(user.password)], LOGIN_2FA_SALT
+        )
+        await capture_event(user.username, "login_2fa_challenge")
+
+        return jsonify(
+            {
+                "status": "success",
+                "result": {"two_factor": True, "method": method, "token": token},
+            }
+        ), 200
+
     await capture_event(user.username, "login")
     login_user(user)
 
@@ -439,6 +517,542 @@ async def _change_password() -> tuple[Response, int]:
         {
             "status": "success",
             "message": "Your password has been changed successfully.",
+        }
+    ), 200
+
+
+@auth_bp.route("/login/2fa", methods=["POST"])
+@rate_limit(
+    SENSITIVE_IP_LIMIT, SENSITIVE_IP_PERIOD, skip_function=_skip_safe_methods
+)
+@rate_limit(
+    SENSITIVE_ACCOUNT_LIMIT,
+    SENSITIVE_ACCOUNT_PERIOD,
+    key_function=_login_2fa_rate_limit_key,
+    skip_function=_skip_safe_methods,
+)
+async def _login_2fa() -> tuple[Response, int]:
+    """
+    Completes a login by verifying the second factor and starting the session.
+    """
+    if await current_user.is_authenticated:
+        return jsonify(
+            {"status": "success", "result": _user_dict(current_user)}
+        ), 200
+
+    data = await request.get_json(silent=True) or {}
+    token = str(data.get("token") or "")
+    code = str(data.get("code") or "").strip()
+
+    payload = validate_token(token, LOGIN_2FA_SALT, LOGIN_2FA_TTL)
+
+    expired = jsonify(
+        {
+            "status": "error",
+            "error": "Your login session has expired. Please sign in again.",
+        }
+    )
+
+    if not isinstance(payload, list) or len(payload) != 2:
+        return expired, 400
+
+    username, fingerprint = payload
+    user = User(username=str(username))
+
+    try:
+        await user.load()
+    except ValueError:
+        return expired, 400
+
+    if password_fingerprint(user.password) != fingerprint:
+        return expired, 400
+
+    method = user.two_factor_method
+    verified = method is None
+
+    if method == "totp" and user.totp_secret:
+        if pyotp.TOTP(user.totp_secret).verify(code, valid_window=TOTP_VALID_WINDOW):
+            verified = True
+        else:
+            matched, remaining = verify_and_consume(code, user.backup_codes)
+            if matched:
+                verified = True
+                user.backup_codes = remaining
+                await user.save()
+    elif method == "email":
+        stored = await cache.get_data(f"2fa:login:{user.username}")
+        if stored and hmac.compare_digest(stored, code):
+            verified = True
+            await cache.redis.delete(f"2fa:login:{user.username}")
+
+    if not verified:
+        return jsonify(
+            {"status": "error", "error": "The code is incorrect or has expired."}
+        ), 401
+
+    await capture_event(user.username, "login")
+    login_user(user)
+
+    return jsonify({"status": "success", "result": _user_dict(user)}), 200
+
+
+@auth_bp.route("/login/2fa/resend", methods=["POST"])
+@rate_limit(
+    SENSITIVE_IP_LIMIT, SENSITIVE_IP_PERIOD, skip_function=_skip_safe_methods
+)
+@rate_limit(
+    SENSITIVE_ACCOUNT_LIMIT,
+    SENSITIVE_ACCOUNT_PERIOD,
+    key_function=_login_2fa_rate_limit_key,
+    skip_function=_skip_safe_methods,
+)
+async def _login_2fa_resend() -> tuple[Response, int]:
+    """
+    Re-sends the email login code for an in-progress email-2FA challenge.
+    """
+    data = await request.get_json(silent=True) or {}
+    token = str(data.get("token") or "")
+
+    payload = validate_token(token, LOGIN_2FA_SALT, LOGIN_2FA_TTL)
+
+    expired = jsonify(
+        {
+            "status": "error",
+            "error": "Your login session has expired. Please sign in again.",
+        }
+    )
+
+    if not isinstance(payload, list) or len(payload) != 2:
+        return expired, 400
+
+    username, fingerprint = payload
+    user = User(username=str(username))
+
+    try:
+        await user.load()
+    except ValueError:
+        return expired, 400
+
+    if (
+        password_fingerprint(user.password) != fingerprint
+        or user.two_factor_method != "email"
+    ):
+        return expired, 400
+
+    await _send_email_login_code(user)
+
+    return jsonify(
+        {"status": "success", "message": "A new code has been sent."}
+    ), 200
+
+
+@auth_bp.route("/change-email", methods=["POST"])
+@rate_limit(
+    SENSITIVE_IP_LIMIT, SENSITIVE_IP_PERIOD, skip_function=_skip_safe_methods
+)
+@rate_limit(
+    SENSITIVE_ACCOUNT_LIMIT,
+    SENSITIVE_ACCOUNT_PERIOD,
+    key_function=_account_rate_limit_key,
+    skip_function=_skip_safe_methods,
+)
+@login_required
+@check_confirmed
+async def _change_email() -> tuple[Response, int]:
+    """
+    Begins an email change: emails a confirmation link to the new address and a
+    notice to the old one. The address only changes once the link is confirmed.
+    """
+    data = await request.get_json(silent=True) or {}
+    password = str(data.get("password") or "")
+    new_email = str(data.get("new_email") or "").strip()
+
+    if not bcrypt.check_password_hash(current_user.password, password):
+        return jsonify(
+            {"status": "error", "error": "Current password is incorrect."}
+        ), 400
+
+    try:
+        validate_email(new_email, check_deliverability=False)
+    except EmailNotValidError:
+        return jsonify(
+            {"status": "error", "error": "A valid email address is required."}
+        ), 400
+
+    if new_email.lower() == current_user.email.lower():
+        return jsonify(
+            {"status": "error", "error": "That is already your email address."}
+        ), 400
+
+    try:
+        await User.get_by_email(new_email)
+        return jsonify(
+            {"status": "error", "error": "That email address is already in use."}
+        ), 409
+    except ValueError:
+        pass
+
+    try:
+        async with aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(total=5)
+        ) as session:
+            async with session.get(
+                f"https://block-temporary-email.com/check/email/{new_email}",
+                headers={
+                    "x-api-key": str(
+                        current_app.config.get("TEMP_MAIL_BLOCK_API_KEY", "")
+                    )
+                },
+            ) as res:
+                if res.status == 200 and (await res.json()).get("temporary"):
+                    return jsonify(
+                        {
+                            "status": "error",
+                            "error": "Temporary disposable emails are not allowed.",
+                        }
+                    ), 400
+    except (aiohttp.ClientError, asyncio.TimeoutError):
+        pass
+
+    token = generate_token(
+        [
+            current_user.username,
+            new_email,
+            password_fingerprint(current_user.password),
+        ],
+        EMAIL_CHANGE_SALT,
+    )
+    confirm_url = f"{config.FRONTEND_URL}/profile/email/{token}"
+
+    html = await render_template("email/change_email.html", confirm_url=confirm_url)
+    await send_email(new_email, "Confirm Your New Email", html)
+
+    notice = await render_template("email/email_changed.html", new_email=new_email)
+    await send_email(current_user.email, "Email Change Requested", notice)
+
+    await capture_event(current_user.username, "email_change_requested")
+
+    return jsonify(
+        {
+            "status": "success",
+            "message": "A confirmation link has been sent to your new email "
+            "address. Please check Junk/Spam folders.",
+        }
+    ), 200
+
+
+@auth_bp.route("/change-email/<token>", methods=["POST"])
+@rate_limit(
+    SENSITIVE_IP_LIMIT, SENSITIVE_IP_PERIOD, skip_function=_skip_safe_methods
+)
+@login_required
+@check_confirmed
+async def _change_email_confirm(token: str) -> tuple[Response, int]:
+    """
+    Applies a pending email change using a valid confirmation token.
+    """
+    payload = validate_token(token, EMAIL_CHANGE_SALT)
+
+    invalid = jsonify(
+        {
+            "status": "error",
+            "error": "The email change link is either invalid or has expired.",
+        }
+    )
+
+    if not isinstance(payload, list) or len(payload) != 3:
+        return invalid, 400
+
+    username, new_email, fingerprint = payload
+
+    if (
+        current_user.username != username
+        or password_fingerprint(current_user.password) != fingerprint
+    ):
+        return invalid, 400
+
+    try:
+        existing = await User.get_by_email(new_email)
+        if existing.username != current_user.username:
+            return jsonify(
+                {"status": "error", "error": "That email address is already in use."}
+            ), 409
+    except ValueError:
+        pass
+
+    current_user.email = new_email
+    await current_user.save()
+
+    await capture_event(current_user.username, "email_changed")
+
+    return jsonify(
+        {
+            "status": "success",
+            "message": "Your email address has been updated.",
+            "result": _user_dict(current_user),
+        }
+    ), 200
+
+
+@auth_bp.route("/2fa/email/enable", methods=["POST"])
+@rate_limit(
+    SENSITIVE_IP_LIMIT, SENSITIVE_IP_PERIOD, skip_function=_skip_safe_methods
+)
+@login_required
+@check_confirmed
+async def _2fa_email_enable() -> tuple[Response, int]:
+    """
+    Enables email-based two-factor authentication after verifying the password.
+    """
+    data = await request.get_json(silent=True) or {}
+    password = str(data.get("password") or "")
+
+    if not bcrypt.check_password_hash(current_user.password, password):
+        return jsonify(
+            {"status": "error", "error": "Current password is incorrect."}
+        ), 400
+
+    if current_user.totp_enabled:
+        return jsonify(
+            {
+                "status": "error",
+                "error": "Disable the authenticator app before using email codes.",
+            }
+        ), 400
+
+    current_user.email_2fa = True
+    await current_user.save()
+
+    await capture_event(current_user.username, "2fa_email_enabled")
+
+    return jsonify(
+        {
+            "status": "success",
+            "message": "Email two-factor authentication is now enabled.",
+            "result": _user_dict(current_user),
+        }
+    ), 200
+
+
+@auth_bp.route("/2fa/email/disable", methods=["POST"])
+@rate_limit(
+    SENSITIVE_IP_LIMIT, SENSITIVE_IP_PERIOD, skip_function=_skip_safe_methods
+)
+@login_required
+@check_confirmed
+async def _2fa_email_disable() -> tuple[Response, int]:
+    """
+    Disables email-based two-factor authentication after verifying the password.
+    """
+    data = await request.get_json(silent=True) or {}
+    password = str(data.get("password") or "")
+
+    if not bcrypt.check_password_hash(current_user.password, password):
+        return jsonify(
+            {"status": "error", "error": "Current password is incorrect."}
+        ), 400
+
+    current_user.email_2fa = False
+    await current_user.save()
+
+    await capture_event(current_user.username, "2fa_email_disabled")
+
+    return jsonify(
+        {
+            "status": "success",
+            "message": "Email two-factor authentication is now disabled.",
+            "result": _user_dict(current_user),
+        }
+    ), 200
+
+
+@auth_bp.route("/2fa/totp/setup", methods=["POST"])
+@rate_limit(
+    SENSITIVE_IP_LIMIT, SENSITIVE_IP_PERIOD, skip_function=_skip_safe_methods
+)
+@login_required
+@check_confirmed
+async def _2fa_totp_setup() -> tuple[Response, int]:
+    """
+    Starts authenticator-app setup: stores a fresh secret and returns its QR.
+    """
+    data = await request.get_json(silent=True) or {}
+    password = str(data.get("password") or "")
+
+    if not bcrypt.check_password_hash(current_user.password, password):
+        return jsonify(
+            {"status": "error", "error": "Current password is incorrect."}
+        ), 400
+
+    if current_user.totp_enabled:
+        return jsonify(
+            {"status": "error", "error": "The authenticator app is already enabled."}
+        ), 400
+
+    secret = pyotp.random_base32()
+    current_user.totp_secret = secret
+    await current_user.save()
+
+    uri = pyotp.TOTP(secret).provisioning_uri(
+        name=current_user.email, issuer_name=TOTP_ISSUER
+    )
+
+    return jsonify(
+        {
+            "status": "success",
+            "result": {
+                "secret": secret,
+                "otpauth_uri": uri,
+                "qr": _totp_qr_data_uri(uri),
+            },
+        }
+    ), 200
+
+
+@auth_bp.route("/2fa/totp/verify", methods=["POST"])
+@rate_limit(
+    SENSITIVE_IP_LIMIT, SENSITIVE_IP_PERIOD, skip_function=_skip_safe_methods
+)
+@login_required
+@check_confirmed
+async def _2fa_totp_verify() -> tuple[Response, int]:
+    """
+    Confirms authenticator setup with a code, enables TOTP, and issues backup codes.
+    """
+    data = await request.get_json(silent=True) or {}
+    code = str(data.get("code") or "").strip()
+
+    if not current_user.totp_secret:
+        return jsonify(
+            {"status": "error", "error": "Start the authenticator setup first."}
+        ), 400
+
+    if current_user.totp_enabled:
+        return jsonify(
+            {"status": "error", "error": "The authenticator app is already enabled."}
+        ), 400
+
+    if not pyotp.TOTP(current_user.totp_secret).verify(
+        code, valid_window=TOTP_VALID_WINDOW
+    ):
+        return jsonify(
+            {"status": "error", "error": "That code is incorrect. Please try again."}
+        ), 400
+
+    codes = generate_backup_codes()
+    current_user.backup_codes = hash_codes(codes)
+    current_user.totp_enabled = True
+    current_user.email_2fa = False  # the authenticator app supersedes email
+    await current_user.save()
+
+    await capture_event(current_user.username, "2fa_totp_enabled")
+
+    return jsonify(
+        {
+            "status": "success",
+            "message": "The authenticator app is now enabled.",
+            "result": {"backup_codes": codes, "user": _user_dict(current_user)},
+        }
+    ), 200
+
+
+@auth_bp.route("/2fa/totp/disable", methods=["POST"])
+@rate_limit(
+    SENSITIVE_IP_LIMIT, SENSITIVE_IP_PERIOD, skip_function=_skip_safe_methods
+)
+@login_required
+@check_confirmed
+async def _2fa_totp_disable() -> tuple[Response, int]:
+    """
+    Disables the authenticator app after verifying the password and a current code.
+    """
+    data = await request.get_json(silent=True) or {}
+    password = str(data.get("password") or "")
+    code = str(data.get("code") or "").strip()
+
+    if not bcrypt.check_password_hash(current_user.password, password):
+        return jsonify(
+            {"status": "error", "error": "Current password is incorrect."}
+        ), 400
+
+    if not current_user.totp_enabled:
+        return jsonify(
+            {"status": "error", "error": "The authenticator app is not enabled."}
+        ), 400
+
+    valid = bool(
+        current_user.totp_secret
+        and pyotp.TOTP(current_user.totp_secret).verify(
+            code, valid_window=TOTP_VALID_WINDOW
+        )
+    )
+    if not valid:
+        valid, remaining = verify_and_consume(code, current_user.backup_codes)
+        current_user.backup_codes = remaining
+
+    if not valid:
+        return jsonify(
+            {"status": "error", "error": "That code is incorrect. Please try again."}
+        ), 400
+
+    current_user.totp_enabled = False
+    current_user.totp_secret = None
+    current_user.backup_codes = []
+    await current_user.save()
+
+    await capture_event(current_user.username, "2fa_totp_disabled")
+
+    return jsonify(
+        {
+            "status": "success",
+            "message": "The authenticator app is now disabled.",
+            "result": _user_dict(current_user),
+        }
+    ), 200
+
+
+@auth_bp.route("/2fa/backup/regenerate", methods=["POST"])
+@rate_limit(
+    SENSITIVE_IP_LIMIT, SENSITIVE_IP_PERIOD, skip_function=_skip_safe_methods
+)
+@login_required
+@check_confirmed
+async def _2fa_backup_regenerate() -> tuple[Response, int]:
+    """
+    Replaces the user's backup codes after verifying the password and a TOTP code.
+    """
+    data = await request.get_json(silent=True) or {}
+    password = str(data.get("password") or "")
+    code = str(data.get("code") or "").strip()
+
+    if not bcrypt.check_password_hash(current_user.password, password):
+        return jsonify(
+            {"status": "error", "error": "Current password is incorrect."}
+        ), 400
+
+    if not current_user.totp_enabled or not current_user.totp_secret:
+        return jsonify(
+            {"status": "error", "error": "The authenticator app is not enabled."}
+        ), 400
+
+    if not pyotp.TOTP(current_user.totp_secret).verify(
+        code, valid_window=TOTP_VALID_WINDOW
+    ):
+        return jsonify(
+            {"status": "error", "error": "That code is incorrect. Please try again."}
+        ), 400
+
+    codes = generate_backup_codes()
+    current_user.backup_codes = hash_codes(codes)
+    await current_user.save()
+
+    await capture_event(current_user.username, "2fa_backup_regenerated")
+
+    return jsonify(
+        {
+            "status": "success",
+            "message": "New backup codes have been generated.",
+            "result": {"backup_codes": codes},
         }
     ), 200
 
