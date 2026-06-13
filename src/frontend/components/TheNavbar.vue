@@ -17,6 +17,7 @@ const toast = useToast()
 const router = useRouter()
 
 const menuOpen = ref(false)
+const loggingOut = ref(false)
 
 const navLink =
   "text-text-dim px-[0.7rem] py-[0.45rem] rounded-field font-medium text-[0.95rem] hover:text-text hover:bg-surface hover:no-underline [&.router-link-active]:text-accent"
@@ -26,11 +27,17 @@ function closeMenu(): void {
 }
 
 async function logout(): Promise<void> {
-  closeMenu()
-  await auth.logout()
-  wallet.reset()
-  toast.success("You have been logged out.")
-  router.push({ name: "home" })
+  if (loggingOut.value) return
+  loggingOut.value = true
+  try {
+    await auth.logout()
+    wallet.reset()
+    toast.success("You have been logged out.")
+    closeMenu()
+    router.push({ name: "home" })
+  } finally {
+    loggingOut.value = false
+  }
 }
 </script>
 
@@ -71,7 +78,18 @@ async function logout(): Promise<void> {
 
         <template v-if="auth.isAuthenticated">
           <RouterLink :class="navLink" to="/wallet/dashboard" @click="closeMenu">Wallet</RouterLink>
-          <button :class="navLink" type="button" @click="logout">Logout</button>
+          <button
+            :class="[navLink, loggingOut && 'opacity-70 cursor-wait']"
+            type="button"
+            :disabled="loggingOut"
+            @click="logout"
+          >
+            <span v-if="loggingOut" class="inline-flex items-center gap-2">
+              <span class="size-[13px] rounded-full border-2 border-border border-t-accent animate-spin"></span>
+              Logging out…
+            </span>
+            <template v-else>Logout</template>
+          </button>
         </template>
         <template v-else>
           <RouterLink :class="navLink" to="/login" @click="closeMenu">Login</RouterLink>
