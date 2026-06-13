@@ -261,6 +261,7 @@ const sending = ref(false)
 const sendErr = ref("")
 const confirmOpen = ref(false)
 const confirmErr = ref("")
+const sendCode = ref("")
 const prepared = ref<{ amount: number; fee: number } | null>(null)
 const sweepToggleDisabled = computed(() => !sendAddr.value.trim())
 
@@ -323,6 +324,7 @@ async function review(): Promise<void> {
       return
     }
     confirmErr.value = ""
+    sendCode.value = ""
     sendOpen.value = false
     confirmOpen.value = true
   } catch (e) {
@@ -360,10 +362,11 @@ async function confirmSend(): Promise<void> {
   confirmErr.value = ""
   sending.value = true
   try {
-    const res = await api.post("/wallet/transfer")
+    const res = await api.post("/wallet/transfer", { code: sendCode.value })
     toast.success(res.message || "Transaction sent.")
     confirmOpen.value = false
     prepared.value = null
+    sendCode.value = ""
     sendAddr.value = ""
     sendAmount.value = ""
     sendSweep.value = false
@@ -691,6 +694,7 @@ async function remove(): Promise<void> {
           <span>{{ prepared ? fromAtomic(prepared.amount + prepared.fee) : "—" }} XNV</span>
         </div>
       </div>
+      <TwoFactorField v-model="sendCode" />
       <div class="flex gap-2">
         <Btn variant="ghost" class="flex-1" :disabled="sending" @click="backToReview">Back</Btn>
         <Btn variant="primary" class="flex-1" :disabled="sending" @click="confirmSend">

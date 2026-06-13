@@ -541,6 +541,9 @@ async def _transfer() -> tuple[Response, int]:
     """
     Relays the transaction the user reviewed via /transfer/prepare.
     """
+    data = await request.get_json(silent=True) or {}
+    code = str(data.get("code") or "")
+
     wallet = _wallet_rpc(timeout=30)
 
     if not await wallet.connected:
@@ -563,6 +566,11 @@ async def _transfer() -> tuple[Response, int]:
                 "code": "expired",
             }
         ), 409
+
+    if not await verify_2fa_code(current_user, code):
+        return jsonify(
+            {"status": "error", "error": "Invalid or missing two-factor code."}
+        ), 401
 
     try:
         hashes = await wallet.relay(json.loads(raw))
