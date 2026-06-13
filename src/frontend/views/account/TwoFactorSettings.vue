@@ -75,6 +75,24 @@ async function copyCodes(): Promise<void> {
   }
 }
 
+function downloadCodes(): void {
+  const content =
+    "NerVault backup codes\n\n" +
+    "Keep these somewhere safe. Each code can be used once if you lose " +
+    "access to your authenticator app.\n\n" +
+    codes.value.join("\n") +
+    "\n"
+  const url = URL.createObjectURL(new Blob([content], { type: "text/plain" }))
+  const a = document.createElement("a")
+  a.href = url
+  a.download = "nervault-backup-codes.txt"
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+  toast.success("Backup codes downloaded.")
+}
+
 async function emailEnable(): Promise<void> {
   error.value = ""
   loading.value = true
@@ -314,7 +332,8 @@ async function backupRegenerate(): Promise<void> {
           </li>
         </ul>
         <div class="flex gap-2">
-          <Btn variant="ghost" size="sm" class="shrink-0" @click="copyCodes">Copy codes</Btn>
+          <Btn variant="ghost" size="sm" class="shrink-0" @click="copyCodes">Copy</Btn>
+          <Btn variant="ghost" size="sm" class="shrink-0" @click="downloadCodes">Download</Btn>
           <Btn variant="primary" size="sm" class="flex-1" @click="close">I've saved my codes</Btn>
         </div>
       </div>
@@ -373,7 +392,8 @@ async function backupRegenerate(): Promise<void> {
           </li>
         </ul>
         <div class="flex gap-2">
-          <Btn variant="ghost" size="sm" class="shrink-0" @click="copyCodes">Copy codes</Btn>
+          <Btn variant="ghost" size="sm" class="shrink-0" @click="copyCodes">Copy</Btn>
+          <Btn variant="ghost" size="sm" class="shrink-0" @click="downloadCodes">Download</Btn>
           <Btn variant="primary" size="sm" class="flex-1" @click="close">I've saved my codes</Btn>
         </div>
       </div>
