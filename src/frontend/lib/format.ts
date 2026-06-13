@@ -13,6 +13,12 @@ export function fromAtomic(atomic: number | string): string {
   return negative ? `-${formatted}` : formatted
 }
 
+export function toAtomic(value: string): bigint {
+  const [whole = "0", frac = ""] = value.split(".")
+  const fracPadded = (frac + "0".repeat(DECIMALS)).slice(0, DECIMALS)
+  return BigInt(whole || "0") * 10n ** BigInt(DECIMALS) + BigInt(fracPadded || "0")
+}
+
 export function shortenAddress(address: string, lead = 8, tail = 8): string {
   if (!address || address.length <= lead + tail) return address
   return `${address.slice(0, lead)}…${address.slice(-tail)}`

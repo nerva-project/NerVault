@@ -222,93 +222,93 @@ class Wallet:
             )
         )["result"]
 
-    async def estimate_sweep_all(
-        self, dest_address: str, account_index: int = 0
-    ) -> Dict[str, Any]:
-        """
-        Builds, but does not relay, a sweep-all transaction to estimate the
-        total amount the destination would receive and the network fee.
-
-        Args:
-            dest_address (str): The destination address.
-            account_index (int, optional): The account index. Defaults to 0.
-
-        Returns:
-            Dict[str, Any]: The sweep_all result, including amount_list and
-            fee_list (per constructed transaction).
-        """
-        return (  # type: ignore[no-any-return]
-            await self.rpc.sweep_all(
-                address=dest_address,
-                subaddr_indices=[],
-                mixin=0,
-                below_amount=0,
-                get_tx_metadata=False,
-                account_index=account_index,
-                priority=0,
-                unlock_time=0,
-                get_tx_keys=False,
-                get_tx_hex=False,
-                do_not_relay=True,
-                ring_size=0,
-            )
-        )["result"]
-
-    async def transfer(
+    async def prepare(
         self,
         dest_address: str,
-        atomic_amount: Optional[float] = None,
-        category: str = "transfer",
+        atomic_amount: Optional[int] = None,
+        sweep: bool = False,
         account_index: int = 0,
         payment_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Performs a transfer or a sweep operation.
+        Builds a transfer or full sweep without relaying it, returning the
+        amount the destination will receive, the network fee, and the signed
+        transaction metadata needed to relay it later.
 
         Args:
             dest_address (str): The destination address.
-            atomic_amount (Optional[float], optional): The amount to transfer. Defaults to None.
-            category (str, optional): The transfer category. Defaults to "transfer".
+            atomic_amount (Optional[int], optional): The amount to transfer, in
+                atomic units. Ignored when sweeping. Defaults to None.
+            sweep (bool, optional): Whether to sweep the full balance.
             account_index (int, optional): The account index. Defaults to 0.
             payment_id (Optional[str], optional): The payment ID. Defaults to None.
 
         Returns:
-            Dict[str, Any]: The transfer result.
+            Dict[str, Any]: {"amount": int, "fee": int, "metadata": list[str]}.
         """
-        if category == "sweep_all":
-            transfer = await self.rpc.sweep_all(
-                address=dest_address,
-                subaddr_indices=[],
-                mixin=0,
-                below_amount=0,
-                get_tx_metadata=False,
-                account_index=account_index,
-                priority=0,
-                unlock_time=0,
-                get_tx_keys=False,
-                get_tx_hex=False,
-                do_not_relay=False,
-                ring_size=0,
-            )
-
-        else:
-            if payment_id and not await self.is_integrated(dest_address):
-                dest_address = await self.integrated_address(
-                    dest_address, payment_id
+        if sweep:
+            res = (
+                await self.rpc.sweep_all(
+                    address=dest_address,
+                    subaddr_indices=[],
+                    mixin=0,
+                    below_amount=0,
+                    get_tx_metadata=True,
+                    account_index=account_index,
+                    priority=0,
+                    unlock_time=0,
+                    get_tx_keys=False,
+                    get_tx_hex=False,
+                    do_not_relay=True,
+                    ring_size=0,
                 )
+            )["result"]
+            return {
+                "amount": sum(res.get("amount_list") or []),
+                "fee": sum(res.get("fee_list") or []),
+                "metadata": res.get("tx_metadata_list") or [],
+            }
 
-            transfer = await self.rpc.transfer(
+        if payment_id and not await self.is_integrated(dest_address):
+            dest_address = await self.integrated_address(dest_address, payment_id)
+
+        res = (
+            await self.rpc.transfer(
                 destinations=[{"address": dest_address, "amount": atomic_amount}],
                 subaddr_indices=[],
                 mixin=0,
-                get_tx_metadata=False,
+                get_tx_metadata=True,
                 account_index=account_index,
                 priority=0,
                 unlock_time=0,
                 get_tx_key=False,
                 get_tx_hex=False,
-                do_not_relay=False,
+                do_not_relay=True,
                 ring_size=0,
             )
+        )["result"]
+        metadata = res.get("tx_metadata")
+        return {
+            "amount": res.get("amount", 0),
+            "fee": res.get("fee", 0),
+            "metadata": [metadata] if metadata else [],
+        }
 
-        return transfer["result"]  # type: ignore[no-any-return]
+    async def relay(self, metadata: list[str]) -> list[str]:
+        """
+        Relays one or more transactions previously built with do_not_relay,
+        returning their broadcast transaction hashes.
+
+        Args:
+            metadata (list[str]): The tx_metadata blobs to broadcast.
+
+        Returns:
+            list[str]: The broadcast transaction hashes.
+        """
+        hashes: list[str] = []
+        for blob in metadata:
+            res = (await self.rpc.relay_tx(tx_hex=blob))["result"]
+            tx_hash = res.get("tx_hash")
+            if tx_hash:
+                hashes.append(tx_hash)
+        return hashes

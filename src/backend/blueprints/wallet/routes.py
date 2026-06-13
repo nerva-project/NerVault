@@ -1,5 +1,6 @@
 from typing import Any
 
+import json
 import base64
 import string
 from io import BytesIO
@@ -538,14 +539,8 @@ async def _integrated_address() -> tuple[Response, int]:
 @check_confirmed
 async def _transfer() -> tuple[Response, int]:
     """
-    Sends funds from the user's wallet, or sweeps the full balance.
+    Relays the transaction the user reviewed via /transfer/prepare.
     """
-    data = await request.get_json(silent=True) or {}
-    address = str(data.get("address") or "").strip()
-    sweep = data.get("sweep") is True
-    amount_raw = str(data.get("amount") or "").strip()
-    payment_id = str(data.get("payment_id") or "").strip() or None
-
     wallet = _wallet_rpc(timeout=30)
 
     if not await wallet.connected:
@@ -558,63 +553,35 @@ async def _transfer() -> tuple[Response, int]:
             }
         ), 503
 
-    if not await wallet.validate_address(address):
-        await capture_event(current_user.username, "tx_fail_address_invalid")
+    cache_key = f"tx_prepared_{current_user.username}"
+    raw = await cache.get_data(cache_key)
+    if not raw:
         return jsonify(
-            {"status": "error", "error": "Invalid Nerva address provided."}
+            {
+                "status": "error",
+                "error": "Your transaction preview expired. Please review again.",
+                "code": "expired",
+            }
+        ), 409
+
+    try:
+        hashes = await wallet.relay(json.loads(raw))
+    except Exception:
+        await cache.redis.delete(cache_key)
+        await capture_event(current_user.username, "tx_fail_relay")
+        return jsonify(
+            {
+                "status": "error",
+                "error": "There was a problem sending the transaction. "
+                "Please review again.",
+                "code": "expired",
+            }
         ), 400
 
-    if sweep:
-        tx = await wallet.transfer(address, None, "sweep_all")
+    await cache.redis.delete(cache_key)
 
-    else:
-        try:
-            decimal_amount = Decimal(amount_raw)
-            if not decimal_amount.is_finite() or decimal_amount <= 0:
-                raise InvalidOperation
-
-        except (InvalidOperation, ValueError):
-            await capture_event(current_user.username, "tx_fail_amount_invalid")
-            return jsonify(
-                {"status": "error", "error": "Invalid Nerva amount specified."}
-            ), 400
-
-        exponent = decimal_amount.normalize().as_tuple().exponent
-        if isinstance(exponent, int) and -exponent > 12:
-            await capture_event(current_user.username, "tx_fail_amount_precision")
-            return jsonify(
-                {
-                    "status": "error",
-                    "error": "Amount has more than 12 decimal places "
-                    "(pico precision).",
-                }
-            ), 400
-
-        try:
-            amount = to_atomic(decimal_amount)
-            if amount <= 0:
-                raise InvalidOperation
-
-        except (InvalidOperation, ValueError):
-            await capture_event(current_user.username, "tx_fail_amount_invalid")
-            return jsonify(
-                {"status": "error", "error": "Invalid Nerva amount specified."}
-            ), 400
-
-        if payment_id and (
-            len(payment_id) not in [16, 32]
-            or not all(c in string.hexdigits for c in payment_id)
-        ):
-            return jsonify(
-                {"status": "error", "error": "Invalid payment ID specified."}
-            ), 400
-
-        tx = await wallet.transfer(address, amount, payment_id=payment_id)
-
-    if not (tx.get("tx_hash") or tx.get("tx_hash_list")):
-        message = tx.get("message", "unknown")
-        msg_lower = str(message).replace(" ", "_").lower()
-        await capture_event(current_user.username, f"tx_fail_{msg_lower}")
+    if not hashes:
+        await capture_event(current_user.username, "tx_fail_relay")
         return jsonify(
             {
                 "status": "error",
@@ -629,7 +596,7 @@ async def _transfer() -> tuple[Response, int]:
     ), 200
 
 
-@wallet_bp.route("/transfer/estimate", methods=["POST"])
+@wallet_bp.route("/transfer/prepare", methods=["POST"])
 @rate_limit(ESTIMATE_IP_LIMIT, ESTIMATE_IP_PERIOD)
 @rate_limit(
     ESTIMATE_ACCOUNT_LIMIT,
@@ -638,14 +605,17 @@ async def _transfer() -> tuple[Response, int]:
 )
 @login_required
 @check_confirmed
-async def _transfer_estimate() -> tuple[Response, int]:
+async def _transfer_prepare() -> tuple[Response, int]:
     """
-    Estimates a sweep (send-all) to the given address by building the
-    transaction without relaying it, returning the total amount the
-    destination would receive and the network fee.
+    Builds (without relaying) the transfer or sweep the user is about to send,
+    returning the amount and network fee to confirm, and stashing the signed
+    transaction so /transfer can relay it.
     """
     data = await request.get_json(silent=True) or {}
     address = str(data.get("address") or "").strip()
+    sweep = data.get("sweep") is True
+    amount_raw = str(data.get("amount") or "").strip()
+    payment_id = str(data.get("payment_id") or "").strip() or None
 
     wallet = _wallet_rpc(timeout=30)
 
@@ -663,23 +633,77 @@ async def _transfer_estimate() -> tuple[Response, int]:
             {"status": "error", "error": "Invalid Nerva address provided."}
         ), 400
 
+    amount: int | None = None
+    if not sweep:
+        try:
+            decimal_amount = Decimal(amount_raw)
+            if not decimal_amount.is_finite() or decimal_amount <= 0:
+                raise InvalidOperation
+
+        except (InvalidOperation, ValueError):
+            return jsonify(
+                {"status": "error", "error": "Invalid Nerva amount specified."}
+            ), 400
+
+        exponent = decimal_amount.normalize().as_tuple().exponent
+        if isinstance(exponent, int) and -exponent > 12:
+            return jsonify(
+                {
+                    "status": "error",
+                    "error": "Amount has more than 12 decimal places "
+                    "(pico precision).",
+                }
+            ), 400
+
+        try:
+            amount = to_atomic(decimal_amount)
+            if amount <= 0:
+                raise InvalidOperation
+
+        except (InvalidOperation, ValueError):
+            return jsonify(
+                {"status": "error", "error": "Invalid Nerva amount specified."}
+            ), 400
+
+        if payment_id and (
+            len(payment_id) not in [16, 32]
+            or not all(c in string.hexdigits for c in payment_id)
+        ):
+            return jsonify(
+                {"status": "error", "error": "Invalid payment ID specified."}
+            ), 400
+
     try:
-        result = await wallet.estimate_sweep_all(address)
+        prepared = await wallet.prepare(
+            address, atomic_amount=amount, sweep=sweep, payment_id=payment_id
+        )
     except Exception:
         return jsonify(
-            {"status": "error", "error": "Could not estimate the sweep amount."}
+            {
+                "status": "error",
+                "error": "Could not prepare the transaction. You may not have "
+                "enough unlocked balance.",
+            }
         ), 400
 
-    amount = sum(result.get("amount_list") or [])
-    fee = sum(result.get("fee_list") or [])
-
-    if amount <= 0:
+    if prepared["amount"] <= 0 or not prepared["metadata"]:
         return jsonify(
-            {"status": "error", "error": "No unlocked balance available to sweep."}
+            {
+                "status": "error",
+                "error": "Could not prepare the transaction. You may not have "
+                "enough unlocked balance.",
+            }
         ), 400
+
+    await cache.store_data(
+        f"tx_prepared_{current_user.username}", 5, json.dumps(prepared["metadata"])
+    )
 
     return jsonify(
-        {"status": "success", "result": {"amount": amount, "fee": fee}}
+        {
+            "status": "success",
+            "result": {"amount": prepared["amount"], "fee": prepared["fee"]},
+        }
     ), 200
 
 

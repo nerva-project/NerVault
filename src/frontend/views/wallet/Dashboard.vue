@@ -3,7 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch, type ComponentP
 import { useRouter } from "vue-router"
 
 import { api, ApiError, API_BASE } from "../../lib/api"
-import { fromAtomic, formatTimestamp, shortenAddress } from "../../lib/format"
+import { fromAtomic, toAtomic, formatTimestamp, shortenAddress } from "../../lib/format"
 import Alert from "../../components/ui/Alert.vue"
 import Badge from "../../components/ui/Badge.vue"
 import BaseModal from "../../components/ui/BaseModal.vue"
@@ -254,70 +254,87 @@ const sendAddr = ref("")
 const sendAmount = ref("")
 const sendSweep = ref(false)
 const sendPid = ref("")
+const reviewing = ref(false)
 const sending = ref(false)
 const sendErr = ref("")
-const sweepEstimate = ref<{ amount: number; fee: number } | null>(null)
-const estimating = ref(false)
-const estimateErr = ref("")
+const confirmOpen = ref(false)
+const confirmErr = ref("")
+const prepared = ref<{ amount: number; fee: number } | null>(null)
 const sweepToggleDisabled = computed(() => !sendAddr.value.trim())
-let estimateTimer: ReturnType<typeof setTimeout> | undefined
+
+const unlockedBalance = computed(() => wallet.overview?.unlocked_balance ?? 0)
+
+const amountExceeds = computed(() => {
+  if (sendSweep.value) return false
+  const a = sendAmount.value.trim()
+  if (!a || a === ".") return false
+  try {
+    return toAtomic(a) > BigInt(unlockedBalance.value)
+  } catch {
+    return false
+  }
+})
+
+const canReview = computed(() => {
+  if (reviewing.value || !sendAddr.value.trim()) return false
+  if (sendSweep.value) return true
+  const a = sendAmount.value.trim()
+  return !!a && a !== "." && !amountExceeds.value
+})
 
 function openSend(): void {
   sendErr.value = ""
   sendSweep.value = false
-  sweepEstimate.value = null
-  estimateErr.value = ""
-  estimating.value = false
+  prepared.value = null
+  confirmErr.value = ""
   sendOpen.value = true
 }
 
-async function estimateSweep(): Promise<void> {
-  const addr = sendAddr.value.trim()
-  if (!sendSweep.value || !addr) {
-    estimating.value = false
-    return
-  }
-  estimating.value = true
-  estimateErr.value = ""
-  try {
-    const res = await api.post<{ amount: number; fee: number }>(
-      "/wallet/transfer/estimate",
-      { address: addr },
-    )
-    if (sendSweep.value && sendAddr.value.trim() === addr) {
-      sweepEstimate.value = res.result ?? null
-    }
-  } catch (e) {
-    if (sendSweep.value && sendAddr.value.trim() === addr) {
-      estimateErr.value =
-        e instanceof ApiError ? e.message : "Could not estimate the amount."
-    }
-  } finally {
-    estimating.value = false
-  }
-}
-
-watch([sendSweep, sendAddr], () => {
-  // Sweep needs a destination; if the address is cleared, drop the toggle.
-  if (sendSweep.value && !sendAddr.value.trim()) {
-    sendSweep.value = false
-    return
-  }
-  if (estimateTimer) clearTimeout(estimateTimer)
-  sweepEstimate.value = null
-  estimateErr.value = ""
-  if (!sendSweep.value || !sendAddr.value.trim()) {
-    estimating.value = false
-    return
-  }
-  estimating.value = true
-  estimateTimer = setTimeout(estimateSweep, 600)
+// Sweep needs a destination; drop the toggle if the address is cleared.
+watch(sendAddr, () => {
+  if (!sendAddr.value.trim()) sendSweep.value = false
 })
 
 function toggleSweep(): void {
   if (sweepToggleDisabled.value) return
   sendSweep.value = !sendSweep.value
   if (sendSweep.value) sendAmount.value = ""
+}
+
+async function review(): Promise<void> {
+  if (!canReview.value) return
+  sendErr.value = ""
+  reviewing.value = true
+  try {
+    const res = await api.post<{ amount: number; fee: number }>(
+      "/wallet/transfer/prepare",
+      {
+        address: sendAddr.value.trim(),
+        sweep: sendSweep.value,
+        amount: sendSweep.value ? undefined : sendAmount.value.trim(),
+        payment_id: sendPid.value.trim() || undefined,
+      },
+    )
+    prepared.value = res.result ?? null
+    if (!prepared.value) {
+      sendErr.value = "Could not prepare the transaction."
+      return
+    }
+    confirmErr.value = ""
+    sendOpen.value = false
+    confirmOpen.value = true
+  } catch (e) {
+    sendErr.value =
+      e instanceof ApiError ? e.message : "Could not prepare the transaction."
+  } finally {
+    reviewing.value = false
+  }
+}
+
+function backToReview(): void {
+  confirmOpen.value = false
+  confirmErr.value = ""
+  sendOpen.value = true
 }
 
 function onSendAmountInput(e: Event): void {
@@ -337,25 +354,30 @@ function generatePaymentId(): void {
   sendPid.value = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")
 }
 
-async function send(): Promise<void> {
-  sendErr.value = ""
+async function confirmSend(): Promise<void> {
+  confirmErr.value = ""
   sending.value = true
   try {
-    const res = await api.post("/wallet/transfer", {
-      address: sendAddr.value.trim(),
-      sweep: sendSweep.value,
-      amount: sendSweep.value ? undefined : sendAmount.value.trim(),
-      payment_id: sendPid.value.trim() || undefined,
-    })
+    const res = await api.post("/wallet/transfer")
     toast.success(res.message || "Transaction sent.")
-    sendOpen.value = false
+    confirmOpen.value = false
+    prepared.value = null
     sendAddr.value = ""
     sendAmount.value = ""
     sendSweep.value = false
     sendPid.value = ""
     await load()
   } catch (e) {
-    sendErr.value = e instanceof ApiError ? e.message : "Transaction failed."
+    const err = e instanceof ApiError ? e : null
+    // A stale/expired preview can't be relayed — send them back to re-review.
+    if (err && err.code === "expired") {
+      confirmOpen.value = false
+      prepared.value = null
+      sendOpen.value = true
+      sendErr.value = err.message
+    } else {
+      confirmErr.value = err ? err.message : "Transaction failed."
+    }
   } finally {
     sending.value = false
   }
@@ -580,7 +602,7 @@ async function remove(): Promise<void> {
 
     <BaseModal :open="sendOpen" title="Send XNV" @close="sendOpen = false">
       <Alert v-if="sendErr" class="mb-4">{{ sendErr }}</Alert>
-      <form @submit.prevent="send">
+      <form @submit.prevent="review">
         <FormField label="Destination address" input-id="sa">
           <input id="sa" class="input" v-model="sendAddr" autocomplete="off" required />
         </FormField>
@@ -588,6 +610,7 @@ async function remove(): Promise<void> {
           label="Amount"
           input-id="sm"
           hint='Amount of XNV to send, e.g. 12.5 (up to 12 decimal places). Tick "Send all" to send your entire unlocked balance, minus the network fee — the amount is calculated for you.'
+          :error="amountExceeds ? 'Amount exceeds your unlocked balance.' : ''"
         >
           <div class="flex flex-wrap items-stretch gap-2">
             <input
@@ -625,17 +648,7 @@ async function remove(): Promise<void> {
               >
             </div>
           </div>
-          <div v-if="sendSweep" class="mt-2 text-[0.85rem]">
-            <span v-if="estimating" class="inline-flex items-center gap-2 text-text-dim">
-              <span class="size-[12px] rounded-full border-2 border-border border-t-accent animate-spin"></span>
-              Calculating amount…
-            </span>
-            <span v-else-if="estimateErr" class="text-danger">{{ estimateErr }}</span>
-            <span v-else-if="sweepEstimate" class="text-text-dim">
-              You'll send ≈ <span class="text-text font-semibold">{{ fromAtomic(sweepEstimate.amount) }} XNV</span>
-              <span class="text-muted"> · fee ≈ {{ fromAtomic(sweepEstimate.fee) }} XNV</span>
-            </span>
-          </div>
+          <p class="mt-2 text-[0.8rem] text-muted">Available: {{ fromAtomic(unlockedBalance) }} XNV</p>
         </FormField>
         <FormField
           label="Payment ID (optional)"
@@ -647,10 +660,38 @@ async function remove(): Promise<void> {
             <Btn variant="ghost" @click="generatePaymentId">Generate</Btn>
           </div>
         </FormField>
-        <Btn type="submit" variant="primary" block :disabled="sending">
-          {{ sending ? "Sending…" : "Send transaction" }}
+        <Btn type="submit" variant="primary" block :disabled="!canReview">
+          {{ reviewing ? "Reviewing…" : "Review transaction" }}
         </Btn>
       </form>
+    </BaseModal>
+
+    <BaseModal :open="confirmOpen" title="Confirm transaction" @close="backToReview">
+      <Alert v-if="confirmErr" class="mb-4">{{ confirmErr }}</Alert>
+      <div class="flex flex-col gap-3 mb-5">
+        <div>
+          <div class="text-text-dim text-[0.8rem] mb-1">To</div>
+          <CopyField :value="sendAddr.trim()" wrap />
+        </div>
+        <div class="flex justify-between gap-4 border-t border-border-soft pt-3 text-[0.95rem]">
+          <span class="text-text-dim">{{ sendSweep ? "Amount (send all)" : "Amount" }}</span>
+          <span class="font-semibold">{{ prepared ? fromAtomic(prepared.amount) : "—" }} XNV</span>
+        </div>
+        <div class="flex justify-between gap-4 text-[0.95rem]">
+          <span class="text-text-dim">Network fee</span>
+          <span>{{ prepared ? fromAtomic(prepared.fee) : "—" }} XNV</span>
+        </div>
+        <div class="flex justify-between gap-4 border-t border-border-soft pt-3 font-semibold">
+          <span>Total</span>
+          <span>{{ prepared ? fromAtomic(prepared.amount + prepared.fee) : "—" }} XNV</span>
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <Btn variant="ghost" class="flex-1" :disabled="sending" @click="backToReview">Back</Btn>
+        <Btn variant="primary" class="flex-1" :disabled="sending" @click="confirmSend">
+          {{ sending ? "Sending…" : "Confirm & send" }}
+        </Btn>
+      </div>
     </BaseModal>
 
     <BaseModal :open="secretsOpen" title="Wallet secrets" @close="closeSecrets">
