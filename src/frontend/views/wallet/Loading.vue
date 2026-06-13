@@ -8,7 +8,15 @@ import { useWalletStore } from "../../stores/wallet"
 const router = useRouter()
 const wallet = useWalletStore()
 
-const statusText = ref("Preparing your wallet…")
+const steps = ["Set up", "Connect", "Sync"]
+const currentStep = ref(0)
+
+function stepState(i: number): "done" | "active" | "pending" {
+  if (i < currentStep.value) return "done"
+  if (i === currentStep.value) return "active"
+  return "pending"
+}
+
 let timer: number | undefined
 let connecting = false
 let stopped = false
@@ -45,13 +53,13 @@ async function poll(): Promise<void> {
     }
 
     if (s.initializing) {
-      statusText.value = "Initializing your wallet…"
+      currentStep.value = 0
       return
     }
 
     if (s.created && !s.connected && !connecting) {
       connecting = true
-      statusText.value = "Connecting to your wallet…"
+      currentStep.value = 1
       try {
         await wallet.connect()
       } catch {
@@ -62,7 +70,7 @@ async function poll(): Promise<void> {
     }
 
     if (s.connected && !s.ready) {
-      statusText.value = "Syncing with the network…"
+      currentStep.value = 2
     }
   } catch {
     /* transient; retry on the next poll */
@@ -82,12 +90,39 @@ onUnmounted(stop)
 <template>
   <section class="flex-[1_0_auto] pt-10 pb-16 w-full max-w-[520px] mx-auto flex flex-col justify-center text-center">
     <Card>
-      <div class="size-[42px] rounded-full border-[3px] border-border border-t-accent animate-spin mx-auto my-6"></div>
-      <h1 class="text-[1.1rem] font-bold mb-4">Loading your wallet</h1>
-      <p class="text-text-dim">{{ statusText }}</p>
-      <p class="text-muted text-[0.85rem]">
-        This can take a moment while the wallet container starts and syncs with the network.
-      </p>
+      <h1 class="text-[1.1rem] font-bold mt-2 mb-5">Loading your wallet</h1>
+      <div class="flex flex-wrap justify-center gap-2">
+        <span
+          v-for="(label, i) in steps"
+          :key="label"
+          class="inline-flex items-center gap-2 px-[0.7rem] py-[0.3rem] rounded-full text-[0.8rem] font-semibold transition-colors"
+          :class="{
+            'bg-accent/[0.14] text-accent': stepState(i) === 'done',
+            'bg-accent text-accent-contrast': stepState(i) === 'active',
+            'bg-surface text-muted': stepState(i) === 'pending',
+          }"
+        >
+          <span
+            v-if="stepState(i) === 'active'"
+            class="size-[12px] rounded-full border-2 border-current/30 border-t-current animate-spin"
+          ></span>
+          <svg
+            v-else-if="stepState(i) === 'done'"
+            class="size-[13px]"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="3"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+          <span v-else class="size-[6px] rounded-full bg-current/50"></span>
+          {{ label }}
+        </span>
+      </div>
+      <p class="text-muted text-[0.85rem] mt-5">This can take a moment while your wallet starts up.</p>
     </Card>
   </section>
 </template>
