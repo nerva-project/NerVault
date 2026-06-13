@@ -252,13 +252,83 @@ function onPidInput(): void {
 const sendOpen = ref(false)
 const sendAddr = ref("")
 const sendAmount = ref("")
+const sendSweep = ref(false)
 const sendPid = ref("")
 const sending = ref(false)
 const sendErr = ref("")
+const sweepEstimate = ref<{ amount: number; fee: number } | null>(null)
+const estimating = ref(false)
+const estimateErr = ref("")
+const sweepToggleDisabled = computed(() => !sendAddr.value.trim())
+let estimateTimer: ReturnType<typeof setTimeout> | undefined
 
 function openSend(): void {
   sendErr.value = ""
+  sendSweep.value = false
+  sweepEstimate.value = null
+  estimateErr.value = ""
+  estimating.value = false
   sendOpen.value = true
+}
+
+async function estimateSweep(): Promise<void> {
+  const addr = sendAddr.value.trim()
+  if (!sendSweep.value || !addr) {
+    estimating.value = false
+    return
+  }
+  estimating.value = true
+  estimateErr.value = ""
+  try {
+    const res = await api.post<{ amount: number; fee: number }>(
+      "/wallet/transfer/estimate",
+      { address: addr },
+    )
+    if (sendSweep.value && sendAddr.value.trim() === addr) {
+      sweepEstimate.value = res.result ?? null
+    }
+  } catch (e) {
+    if (sendSweep.value && sendAddr.value.trim() === addr) {
+      estimateErr.value =
+        e instanceof ApiError ? e.message : "Could not estimate the amount."
+    }
+  } finally {
+    estimating.value = false
+  }
+}
+
+watch([sendSweep, sendAddr], () => {
+  // Sweep needs a destination; if the address is cleared, drop the toggle.
+  if (sendSweep.value && !sendAddr.value.trim()) {
+    sendSweep.value = false
+    return
+  }
+  if (estimateTimer) clearTimeout(estimateTimer)
+  sweepEstimate.value = null
+  estimateErr.value = ""
+  if (!sendSweep.value || !sendAddr.value.trim()) {
+    estimating.value = false
+    return
+  }
+  estimating.value = true
+  estimateTimer = setTimeout(estimateSweep, 600)
+})
+
+function toggleSweep(): void {
+  if (sweepToggleDisabled.value) return
+  sendSweep.value = !sendSweep.value
+  if (sendSweep.value) sendAmount.value = ""
+}
+
+function onSendAmountInput(e: Event): void {
+  const el = e.target as HTMLInputElement
+  let v = el.value.replace(/[^0-9.]/g, "")
+  const dot = v.indexOf(".")
+  if (dot !== -1) {
+    v = v.slice(0, dot + 1) + v.slice(dot + 1).replace(/\./g, "")
+  }
+  sendAmount.value = v
+  if (el.value !== v) el.value = v
 }
 
 function generatePaymentId(): void {
@@ -273,13 +343,15 @@ async function send(): Promise<void> {
   try {
     const res = await api.post("/wallet/transfer", {
       address: sendAddr.value.trim(),
-      amount: sendAmount.value.trim(),
+      sweep: sendSweep.value,
+      amount: sendSweep.value ? undefined : sendAmount.value.trim(),
       payment_id: sendPid.value.trim() || undefined,
     })
     toast.success(res.message || "Transaction sent.")
     sendOpen.value = false
     sendAddr.value = ""
     sendAmount.value = ""
+    sendSweep.value = false
     sendPid.value = ""
     await load()
   } catch (e) {
@@ -515,9 +587,55 @@ async function remove(): Promise<void> {
         <FormField
           label="Amount"
           input-id="sm"
-          hint='Amount of XNV to send, e.g. 12.5 (up to 12 decimal places). Type "all" to send your entire unlocked balance.'
+          hint='Amount of XNV to send, e.g. 12.5 (up to 12 decimal places). Tick "Send all" to send your entire unlocked balance, minus the network fee — the amount is calculated for you.'
         >
-          <input id="sm" class="input" v-model="sendAmount" placeholder='e.g. 12.5 or "all"' required />
+          <div class="flex flex-wrap items-stretch gap-2">
+            <input
+              id="sm"
+              class="input flex-1 min-w-[160px]"
+              type="text"
+              inputmode="decimal"
+              :value="sendAmount"
+              @input="onSendAmountInput"
+              :disabled="sendSweep"
+              :placeholder="sendSweep ? 'Entire balance' : 'e.g. 12.5'"
+              :required="!sendSweep"
+            />
+            <div class="group relative inline-flex">
+              <button
+                type="button"
+                role="checkbox"
+                :aria-checked="sendSweep"
+                :aria-disabled="sweepToggleDisabled"
+                @click="toggleSweep"
+                class="inline-flex items-center gap-[0.45rem] h-full px-[0.85rem] rounded-field border text-[0.9rem] font-medium select-none transition-colors"
+                :class="sweepToggleDisabled
+                  ? 'border-border text-muted opacity-60 cursor-not-allowed'
+                  : sendSweep
+                    ? 'border-accent text-accent bg-accent/[0.1] cursor-pointer'
+                    : 'border-border text-text-dim hover:border-accent cursor-pointer'"
+              >
+                <input type="checkbox" :checked="sendSweep" tabindex="-1" aria-hidden="true" class="accent-accent pointer-events-none" />
+                Send all
+              </button>
+              <span
+                v-if="sweepToggleDisabled"
+                class="absolute right-0 bottom-[calc(100%_+_8px)] w-max max-w-[220px] px-[0.7rem] py-[0.55rem] bg-bg-soft border border-border rounded-field shadow-card text-text-dim text-[0.8rem] font-normal leading-[1.4] opacity-0 invisible transition-opacity duration-[120ms] z-20 pointer-events-none group-hover:opacity-100 group-hover:visible"
+                >Enter a destination address first.</span
+              >
+            </div>
+          </div>
+          <div v-if="sendSweep" class="mt-2 text-[0.85rem]">
+            <span v-if="estimating" class="inline-flex items-center gap-2 text-text-dim">
+              <span class="size-[12px] rounded-full border-2 border-border border-t-accent animate-spin"></span>
+              Calculating amount…
+            </span>
+            <span v-else-if="estimateErr" class="text-danger">{{ estimateErr }}</span>
+            <span v-else-if="sweepEstimate" class="text-text-dim">
+              You'll send ≈ <span class="text-text font-semibold">{{ fromAtomic(sweepEstimate.amount) }} XNV</span>
+              <span class="text-muted"> · fee ≈ {{ fromAtomic(sweepEstimate.fee) }} XNV</span>
+            </span>
+          </div>
         </FormField>
         <FormField
           label="Payment ID (optional)"

@@ -222,6 +222,38 @@ class Wallet:
             )
         )["result"]
 
+    async def estimate_sweep_all(
+        self, dest_address: str, account_index: int = 0
+    ) -> Dict[str, Any]:
+        """
+        Builds, but does not relay, a sweep-all transaction to estimate the
+        total amount the destination would receive and the network fee.
+
+        Args:
+            dest_address (str): The destination address.
+            account_index (int, optional): The account index. Defaults to 0.
+
+        Returns:
+            Dict[str, Any]: The sweep_all result, including amount_list and
+            fee_list (per constructed transaction).
+        """
+        return (  # type: ignore[no-any-return]
+            await self.rpc.sweep_all(
+                address=dest_address,
+                subaddr_indices=[],
+                mixin=0,
+                below_amount=0,
+                get_tx_metadata=False,
+                account_index=account_index,
+                priority=0,
+                unlock_time=0,
+                get_tx_keys=False,
+                get_tx_hex=False,
+                do_not_relay=True,
+                ring_size=0,
+            )
+        )["result"]
+
     async def transfer(
         self,
         dest_address: str,

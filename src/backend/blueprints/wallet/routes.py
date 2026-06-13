@@ -40,6 +40,13 @@ SENSITIVE_IP_PERIOD = timedelta(minutes=1)
 SENSITIVE_ACCOUNT_LIMIT = 5
 SENSITIVE_ACCOUNT_PERIOD = timedelta(minutes=15)
 
+# Sweep estimates build (but don't relay) a transaction, so they are cheaper
+# than a real transfer and may be re-run as the user edits the address.
+ESTIMATE_IP_LIMIT = 20
+ESTIMATE_IP_PERIOD = timedelta(minutes=1)
+ESTIMATE_ACCOUNT_LIMIT = 30
+ESTIMATE_ACCOUNT_PERIOD = timedelta(minutes=1)
+
 # Blocks an output stays locked after its block before it becomes spendable.
 SPENDABLE_AGE = 10
 
@@ -535,6 +542,7 @@ async def _transfer() -> tuple[Response, int]:
     """
     data = await request.get_json(silent=True) or {}
     address = str(data.get("address") or "").strip()
+    sweep = data.get("sweep") is True
     amount_raw = str(data.get("amount") or "").strip()
     payment_id = str(data.get("payment_id") or "").strip() or None
 
@@ -556,7 +564,7 @@ async def _transfer() -> tuple[Response, int]:
             {"status": "error", "error": "Invalid Nerva address provided."}
         ), 400
 
-    if amount_raw == "all":
+    if sweep:
         tx = await wallet.transfer(address, None, "sweep_all")
 
     else:
@@ -618,6 +626,60 @@ async def _transfer() -> tuple[Response, int]:
 
     return jsonify(
         {"status": "success", "message": "The transaction has been sent."}
+    ), 200
+
+
+@wallet_bp.route("/transfer/estimate", methods=["POST"])
+@rate_limit(ESTIMATE_IP_LIMIT, ESTIMATE_IP_PERIOD)
+@rate_limit(
+    ESTIMATE_ACCOUNT_LIMIT,
+    ESTIMATE_ACCOUNT_PERIOD,
+    key_function=_account_rate_limit_key,
+)
+@login_required
+@check_confirmed
+async def _transfer_estimate() -> tuple[Response, int]:
+    """
+    Estimates a sweep (send-all) to the given address by building the
+    transaction without relaying it, returning the total amount the
+    destination would receive and the network fee.
+    """
+    data = await request.get_json(silent=True) or {}
+    address = str(data.get("address") or "").strip()
+
+    wallet = _wallet_rpc(timeout=30)
+
+    if not await wallet.connected:
+        return jsonify(
+            {
+                "status": "error",
+                "error": "Wallet RPC interface is unavailable.",
+                "code": "not_connected",
+            }
+        ), 503
+
+    if not await wallet.validate_address(address):
+        return jsonify(
+            {"status": "error", "error": "Invalid Nerva address provided."}
+        ), 400
+
+    try:
+        result = await wallet.estimate_sweep_all(address)
+    except Exception:
+        return jsonify(
+            {"status": "error", "error": "Could not estimate the sweep amount."}
+        ), 400
+
+    amount = sum(result.get("amount_list") or [])
+    fee = sum(result.get("fee_list") or [])
+
+    if amount <= 0:
+        return jsonify(
+            {"status": "error", "error": "No unlocked balance available to sweep."}
+        ), 400
+
+    return jsonify(
+        {"status": "success", "result": {"amount": amount, "fee": fee}}
     ), 200
 
 
