@@ -7,6 +7,7 @@ import Card from "../../components/ui/Card.vue"
 import BaseModal from "../../components/ui/BaseModal.vue"
 import CopyField from "../../components/ui/CopyField.vue"
 import FormField from "../../components/ui/FormField.vue"
+import PasswordInput from "../../components/ui/PasswordInput.vue"
 import { api, ApiError } from "../../lib/api"
 import { useToast } from "../../composables/useToast"
 import { useAuthStore, type User } from "../../stores/auth"
@@ -239,8 +240,7 @@ async function backupRegenerate(): Promise<void> {
       </p>
       <form @submit.prevent="emailEnable">
         <FormField label="Current password" input-id="ee-pw">
-          <input id="ee-pw" class="input" type="password" v-model="form.password"
-            autocomplete="current-password" required />
+          <PasswordInput id="ee-pw" v-model="form.password" autocomplete="current-password" required />
         </FormField>
         <Btn type="submit" variant="primary" block :disabled="loading">
           {{ loading ? "Enabling…" : "Enable email codes" }}
@@ -256,8 +256,7 @@ async function backupRegenerate(): Promise<void> {
       </p>
       <form @submit.prevent="emailDisable">
         <FormField label="Current password" input-id="ed-pw">
-          <input id="ed-pw" class="input" type="password" v-model="form.password"
-            autocomplete="current-password" required />
+          <PasswordInput id="ed-pw" v-model="form.password" autocomplete="current-password" required />
         </FormField>
         <Btn type="submit" variant="danger" block :disabled="loading">
           {{ loading ? "Turning off…" : "Turn off email codes" }}
@@ -274,8 +273,7 @@ async function backupRegenerate(): Promise<void> {
           Confirm your password to generate a new secret key.
         </p>
         <FormField label="Current password" input-id="ts-pw">
-          <input id="ts-pw" class="input" type="password" v-model="form.password"
-            autocomplete="current-password" required />
+          <PasswordInput id="ts-pw" v-model="form.password" autocomplete="current-password" required />
         </FormField>
         <Btn type="submit" variant="primary" block :disabled="loading">
           {{ loading ? "Loading…" : "Continue" }}
@@ -331,8 +329,7 @@ async function backupRegenerate(): Promise<void> {
       </p>
       <form @submit.prevent="totpDisable">
         <FormField label="Current password" input-id="td-pw">
-          <input id="td-pw" class="input" type="password" v-model="form.password"
-            autocomplete="current-password" required />
+          <PasswordInput id="td-pw" v-model="form.password" autocomplete="current-password" required />
         </FormField>
         <FormField label="Authenticator or backup code" input-id="td-code">
           <input id="td-code" class="input" v-model="form.code"
@@ -354,8 +351,7 @@ async function backupRegenerate(): Promise<void> {
           current authenticator code to generate a new set.
         </p>
         <FormField label="Current password" input-id="bk-pw">
-          <input id="bk-pw" class="input" type="password" v-model="form.password"
-            autocomplete="current-password" required />
+          <PasswordInput id="bk-pw" v-model="form.password" autocomplete="current-password" required />
         </FormField>
         <FormField label="6-digit code" input-id="bk-code">
           <input id="bk-code" class="input" v-model="form.code" inputmode="numeric"

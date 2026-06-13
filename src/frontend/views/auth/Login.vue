@@ -6,6 +6,7 @@ import Alert from "../../components/ui/Alert.vue"
 import Btn from "../../components/ui/Btn.vue"
 import Card from "../../components/ui/Card.vue"
 import FormField from "../../components/ui/FormField.vue"
+import PasswordInput from "../../components/ui/PasswordInput.vue"
 import { api, ApiError } from "../../lib/api"
 import { safeRedirect } from "../../router"
 import { useAuthStore, type User } from "../../stores/auth"
@@ -114,8 +115,7 @@ function backToLogin(): void {
             <input id="username" class="input" v-model="username" autocomplete="username" required />
           </FormField>
           <FormField label="Password" input-id="password">
-            <input id="password" class="input" type="password" v-model="password"
-              autocomplete="current-password" required />
+            <PasswordInput id="password" v-model="password" autocomplete="current-password" required />
           </FormField>
           <Btn type="submit" variant="primary" block :disabled="loading">
             {{ loading ? "Logging in…" : "Login" }}

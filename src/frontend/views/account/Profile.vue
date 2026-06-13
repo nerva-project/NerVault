@@ -7,6 +7,7 @@ import Btn from "../../components/ui/Btn.vue"
 import Card from "../../components/ui/Card.vue"
 import BaseModal from "../../components/ui/BaseModal.vue"
 import FormField from "../../components/ui/FormField.vue"
+import PasswordInput from "../../components/ui/PasswordInput.vue"
 import PageHeader from "../../components/ui/PageHeader.vue"
 import { api, ApiError } from "../../lib/api"
 import { useToast } from "../../composables/useToast"
@@ -130,8 +131,7 @@ async function submitPassword(): Promise<void> {
             autocomplete="email" required />
         </FormField>
         <FormField label="Current password" input-id="ce-pw">
-          <input id="ce-pw" class="input" type="password" v-model="emailForm.password"
-            autocomplete="current-password" required />
+          <PasswordInput id="ce-pw" v-model="emailForm.password" autocomplete="current-password" required />
         </FormField>
         <Btn type="submit" variant="primary" block :disabled="emailLoading">
           {{ emailLoading ? "Sending…" : "Send confirmation link" }}
@@ -144,16 +144,13 @@ async function submitPassword(): Promise<void> {
       <Alert v-if="pwError" class="mb-4">{{ pwError }}</Alert>
       <form @submit.prevent="submitPassword">
         <FormField label="Current password" input-id="cp-current">
-          <input id="cp-current" class="input" type="password" v-model="pwForm.current"
-            autocomplete="current-password" required />
+          <PasswordInput id="cp-current" v-model="pwForm.current" autocomplete="current-password" required />
         </FormField>
         <FormField label="New password" input-id="cp-password">
-          <input id="cp-password" class="input" type="password" v-model="pwForm.password"
-            autocomplete="new-password" required />
+          <PasswordInput id="cp-password" v-model="pwForm.password" autocomplete="new-password" required />
         </FormField>
         <FormField label="Confirm new password" input-id="cp-confirm">
-          <input id="cp-confirm" class="input" type="password" v-model="pwForm.confirm"
-            autocomplete="new-password" required />
+          <PasswordInput id="cp-confirm" v-model="pwForm.confirm" autocomplete="new-password" required />
         </FormField>
         <Btn type="submit" variant="primary" block :disabled="pwLoading">
           {{ pwLoading ? "Saving…" : "Change password" }}

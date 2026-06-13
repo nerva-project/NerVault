@@ -6,6 +6,7 @@ import Alert from "../../components/ui/Alert.vue"
 import Btn from "../../components/ui/Btn.vue"
 import Card from "../../components/ui/Card.vue"
 import FormField from "../../components/ui/FormField.vue"
+import PasswordInput from "../../components/ui/PasswordInput.vue"
 import { api, ApiError } from "../../lib/api"
 import { useAuthStore, type User } from "../../stores/auth"
 
@@ -65,12 +66,10 @@ async function submit(): Promise<void> {
           <input id="email" class="input" type="email" v-model="email" autocomplete="email" required />
         </FormField>
         <FormField label="Password" input-id="password">
-          <input id="password" class="input" type="password" v-model="password"
-            autocomplete="new-password" required />
+          <PasswordInput id="password" v-model="password" autocomplete="new-password" required />
         </FormField>
         <FormField label="Confirm password" input-id="confirm">
-          <input id="confirm" class="input" type="password" v-model="confirmPassword"
-            autocomplete="new-password" required />
+          <PasswordInput id="confirm" v-model="confirmPassword" autocomplete="new-password" required />
         </FormField>
 
         <label class="flex items-start gap-[0.55rem] text-[0.9rem] text-text-dim mb-3">

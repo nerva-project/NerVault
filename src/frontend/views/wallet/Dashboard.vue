@@ -11,6 +11,7 @@ import Btn from "../../components/ui/Btn.vue"
 import Card from "../../components/ui/Card.vue"
 import CopyField from "../../components/ui/CopyField.vue"
 import FormField from "../../components/ui/FormField.vue"
+import PasswordInput from "../../components/ui/PasswordInput.vue"
 import InfoTip from "../../components/ui/InfoTip.vue"
 import Spinner from "../../components/ui/Spinner.vue"
 import { useToast } from "../../composables/useToast"
@@ -702,8 +703,7 @@ async function remove(): Promise<void> {
         <Alert v-if="secretErr" class="mb-4">{{ secretErr }}</Alert>
         <form @submit.prevent="reveal">
           <FormField label="Account password" input-id="secp">
-            <input id="secp" class="input" type="password" v-model="secretPass"
-              autocomplete="current-password" required />
+            <PasswordInput id="secp" v-model="secretPass" autocomplete="current-password" required />
           </FormField>
           <Btn type="submit" variant="primary" block :disabled="secretLoading">
             {{ secretLoading ? "Verifying…" : "Reveal secrets" }}
