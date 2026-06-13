@@ -9,6 +9,7 @@ import FormField from "../../components/ui/FormField.vue"
 import PasswordInput from "../../components/ui/PasswordInput.vue"
 import { api, ApiError } from "../../lib/api"
 import { safeRedirect } from "../../router"
+import { useToast } from "../../composables/useToast"
 import { useAuthStore, type User } from "../../stores/auth"
 
 type Challenge = { two_factor: true; method: "email" | "totp"; token: string }
@@ -17,6 +18,7 @@ type LoginResult = User | Challenge
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
+const toast = useToast()
 
 const step = ref<"credentials" | "challenge">("credentials")
 const username = ref("")
@@ -84,10 +86,13 @@ async function resend(): Promise<void> {
   if (!challenge.value || resending.value) return
   resending.value = true
   try {
-    await api.post("/auth/login/2fa/resend", { token: challenge.value.token })
+    const res = await api.post("/auth/login/2fa/resend", {
+      token: challenge.value.token,
+    })
     error.value = ""
-  } catch {
-    /* ignore */
+    toast.success(res.message || "A new code has been sent to your email.")
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : "Could not resend the code."
   } finally {
     resending.value = false
   }
