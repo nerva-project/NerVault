@@ -780,8 +780,12 @@ async def _change_email_confirm(token: str) -> tuple[Response, int]:
     except ValueError:
         pass
 
+    old_email = current_user.email
     current_user.email = new_email
     await current_user.save()
+
+    notice = await render_template("email/email_updated.html", new_email=new_email)
+    await send_email(old_email, "Email Address Changed", notice)
 
     await capture_event(current_user.username, "email_changed")
 
