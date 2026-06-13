@@ -188,10 +188,11 @@ body::after {
 a {
   color: var(--accent);
   text-decoration: none;
+  transition: filter 0.15s ease;
 }
 
 a:hover {
-  text-decoration: underline;
+  filter: brightness(1.35);
 }
 
 /* Suppress transitions for the frame the theme is swapped (prevents flicker). */
