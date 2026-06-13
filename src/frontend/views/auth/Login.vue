@@ -28,6 +28,7 @@ const challenge = ref<Challenge | null>(null)
 const loading = ref(false)
 const resending = ref(false)
 const error = ref("")
+const useBackup = ref(false)
 
 function proceed(user: User | null): void {
   auth.setUser(user)
@@ -54,6 +55,7 @@ async function submit(): Promise<void> {
     if (res.result && "token" in res.result) {
       challenge.value = res.result
       code.value = ""
+      useBackup.value = false
       step.value = "challenge"
     } else {
       proceed(res.result ?? null)
@@ -98,12 +100,19 @@ async function resend(): Promise<void> {
   }
 }
 
+function toggleBackup(): void {
+  useBackup.value = !useBackup.value
+  code.value = ""
+  error.value = ""
+}
+
 function backToLogin(): void {
   step.value = "credentials"
   challenge.value = null
   code.value = ""
   password.value = ""
   error.value = ""
+  useBackup.value = false
 }
 </script>
 
@@ -143,16 +152,19 @@ function backToLogin(): void {
             We emailed a 6-digit code to your address. Enter it below to finish
             signing in.
           </template>
+          <template v-else-if="useBackup">
+            Enter one of your backup codes to finish signing in.
+          </template>
           <template v-else>
-            Enter the 6-digit code from your authenticator app, or one of your
-            backup codes.
+            Enter the 6-digit code from your authenticator app.
           </template>
         </p>
 
         <form @submit.prevent="submitCode">
-          <FormField label="Verification code" input-id="code">
+          <FormField :label="useBackup ? 'Backup code' : 'Verification code'" input-id="code">
             <input id="code" class="input" v-model="code" autocomplete="one-time-code"
-              inputmode="numeric" placeholder="123456" required autofocus />
+              :inputmode="useBackup ? 'text' : 'numeric'"
+              :placeholder="useBackup ? 'xxxx-xxxx' : '123456'" required autofocus />
           </FormField>
           <Btn type="submit" variant="primary" block :disabled="loading">
             {{ loading ? "Verifying…" : "Verify" }}
@@ -162,6 +174,10 @@ function backToLogin(): void {
         <p class="text-text-dim mt-4 text-[0.9rem]">
           <template v-if="challenge?.method === 'email'">
             <a href="#" @click.prevent="resend">{{ resending ? "Sending…" : "Resend code" }}</a>
+            &middot;
+          </template>
+          <template v-else>
+            <a href="#" @click.prevent="toggleBackup">{{ useBackup ? "Use authenticator code" : "Use a backup code" }}</a>
             &middot;
           </template>
           <a href="#" @click.prevent="backToLogin">Back to login</a>
