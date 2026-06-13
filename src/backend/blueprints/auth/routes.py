@@ -569,6 +569,7 @@ async def _login_2fa() -> tuple[Response, int]:
 
     method = user.two_factor_method
     verified = method is None
+    used_backup = False
 
     if method == "totp" and user.totp_secret:
         if pyotp.TOTP(user.totp_secret).verify(code, valid_window=TOTP_VALID_WINDOW):
@@ -577,6 +578,7 @@ async def _login_2fa() -> tuple[Response, int]:
             matched, remaining = verify_and_consume(code, user.backup_codes)
             if matched:
                 verified = True
+                used_backup = True
                 user.backup_codes = remaining
                 await user.save()
     elif method == "email":
@@ -592,6 +594,13 @@ async def _login_2fa() -> tuple[Response, int]:
 
     await capture_event(user.username, "login")
     login_user(user)
+
+    if used_backup:
+        await capture_event(user.username, "login_2fa_backup_used")
+        html = await render_template(
+            "email/backup_code_used.html", remaining=len(user.backup_codes)
+        )
+        await send_email(user.email, "Backup Code Used", html)
 
     return jsonify({"status": "success", "result": _user_dict(user)}), 200
 
