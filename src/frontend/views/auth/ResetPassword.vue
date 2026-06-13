@@ -44,11 +44,11 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
-  <section class="page container page--narrow">
+  <section class="flex-[1_0_auto] pt-10 pb-16 w-full max-w-[520px] mx-auto flex flex-col justify-center">
     <Card>
-      <h1 class="card__title">Set a new password</h1>
+      <h1 class="text-[1.1rem] font-bold mb-4">Set a new password</h1>
 
-      <Alert v-if="error" style="margin-bottom: 1rem">{{ error }}</Alert>
+      <Alert v-if="error" class="mb-4">{{ error }}</Alert>
 
       <form @submit.prevent="submit">
         <FormField label="New password" input-id="password">

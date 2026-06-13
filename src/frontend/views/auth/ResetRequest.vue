@@ -31,9 +31,9 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
-  <section class="page container page--narrow">
+  <section class="flex-[1_0_auto] pt-10 pb-16 w-full max-w-[520px] mx-auto flex flex-col justify-center">
     <Card>
-      <h1 class="card__title">Reset password</h1>
+      <h1 class="text-[1.1rem] font-bold mb-4">Reset password</h1>
 
       <Alert v-if="done" variant="success">
         If that email is registered and confirmed, a reset link has been sent. Please check your
@@ -41,7 +41,7 @@ async function submit(): Promise<void> {
       </Alert>
 
       <template v-else>
-        <Alert v-if="error" style="margin-bottom: 1rem">{{ error }}</Alert>
+        <Alert v-if="error" class="mb-4">{{ error }}</Alert>
         <form @submit.prevent="submit">
           <FormField label="Email address" input-id="email">
             <input id="email" class="input" type="email" v-model="email" autocomplete="email" required />
@@ -52,7 +52,7 @@ async function submit(): Promise<void> {
         </form>
       </template>
 
-      <p class="dim" style="margin-top: 1rem; font-size: 0.9rem">
+      <p class="text-text-dim mt-4 text-[0.9rem]">
         <RouterLink to="/login">Back to login</RouterLink>
       </p>
     </Card>

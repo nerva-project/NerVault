@@ -46,11 +46,11 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
-  <section class="page container page--narrow">
+  <section class="flex-[1_0_auto] pt-10 pb-16 w-full max-w-[520px] mx-auto flex flex-col justify-center">
     <Card>
-      <h1 class="card__title">Login</h1>
+      <h1 class="text-[1.1rem] font-bold mb-4">Login</h1>
 
-      <Alert v-if="error" style="margin-bottom: 1rem">{{ error }}</Alert>
+      <Alert v-if="error" class="mb-4">{{ error }}</Alert>
 
       <form @submit.prevent="submit">
         <FormField label="Username" input-id="username">
@@ -65,7 +65,7 @@ async function submit(): Promise<void> {
         </Btn>
       </form>
 
-      <p class="dim" style="margin-top: 1rem; font-size: 0.9rem">
+      <p class="text-text-dim mt-4 text-[0.9rem]">
         <RouterLink to="/reset">Forgot password?</RouterLink>
         &middot; No account? <RouterLink to="/register">Register</RouterLink>
       </p>

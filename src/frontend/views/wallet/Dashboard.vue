@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue"
+import { computed, nextTick, onMounted, onUnmounted, ref, watch, type ComponentPublicInstance } from "vue"
 import { useRouter } from "vue-router"
 
 import { api, ApiError, API_BASE } from "../../lib/api"
@@ -26,6 +26,9 @@ const qrSrc = `${API_BASE}/wallet/qr`
 const addrQrLoaded = ref(false)
 
 const overview = computed(() => wallet.overview)
+
+const recvCard = ref<ComponentPublicInstance | null>(null)
+const txCard = ref<ComponentPublicInstance | null>(null)
 
 const now = ref(Date.now())
 
@@ -140,8 +143,8 @@ async function load(): Promise<void> {
 }
 
 function syncCardHeights(): void {
-  const recv = document.querySelector<HTMLElement>(".dash__mid > .center")
-  const tx = document.querySelector<HTMLElement>(".dash__mid > .dash__tx")
+  const recv = recvCard.value?.$el as HTMLElement | undefined
+  const tx = txCard.value?.$el as HTMLElement | undefined
   if (!recv || !tx) return
   // Side-by-side: match the transactions card to the (dynamic) receive card.
   // Stacked on mobile, so let it size naturally.
@@ -167,7 +170,7 @@ watch(
   async (l) => {
     if (l) return
     await nextTick()
-    const recv = document.querySelector<HTMLElement>(".dash__mid > .center")
+    const recv = recvCard.value?.$el as HTMLElement | undefined
     if (recv && cardRO) {
       cardRO.disconnect()
       cardRO.observe(recv)
@@ -344,99 +347,110 @@ async function remove(): Promise<void> {
 </script>
 
 <template>
-  <section class="page container">
+  <section class="flex-[1_0_auto] pt-10 pb-16 w-full max-w-[1080px] mx-auto">
     <Spinner v-if="loading" label="Loading your wallet…" />
 
     <Alert v-else-if="error">{{ error }}</Alert>
 
-    <div v-else-if="overview" class="dash">
-      <Card class="dash__balance">
-        <div class="dash__stats">
+    <div v-else-if="overview" class="flex flex-col gap-5">
+      <Card class="flex flex-col gap-4">
+        <div
+          class="grid grid-cols-4 gap-7 items-stretch [&>*+*]:border-l [&>*+*]:border-border [&>*+*]:pl-7 max-[860px]:grid-cols-1 max-[860px]:gap-5 max-[860px]:[&>*+*]:border-l-0 max-[860px]:[&>*+*]:pl-0"
+        >
           <div>
-            <div class="stat__label">Balance</div>
-            <div class="dash__statval">
-              <div class="balance__value">
-                {{ fromAtomic(overview.balance) }} <span class="balance__unit">XNV</span>
+            <div class="text-muted text-[0.8rem] uppercase tracking-[0.05em]">Balance</div>
+            <div class="min-h-[2.4rem] mt-[0.35rem] flex items-end">
+              <div class="text-[2rem] font-extrabold font-mono break-all">
+                {{ fromAtomic(overview.balance) }} <span class="text-muted text-base">XNV</span>
               </div>
             </div>
-            <p v-if="balanceLine1" class="muted dash__statsub">{{ balanceLine1 }}</p>
-            <p v-if="lockedLine" class="muted dash__statsub">{{ lockedLine }}</p>
+            <p v-if="balanceLine1" class="text-muted mt-[0.45rem] text-[0.85rem]">{{ balanceLine1 }}</p>
+            <p v-if="lockedLine" class="text-muted mt-[0.15rem] text-[0.85rem]">{{ lockedLine }}</p>
           </div>
           <div>
-            <div class="stat__label">Network</div>
-            <div class="dash__statval">
+            <div class="text-muted text-[0.8rem] uppercase tracking-[0.05em]">Network</div>
+            <div class="min-h-[2.4rem] mt-[0.35rem] flex items-end">
               <Badge :variant="synced ? 'in' : 'out'">
                 {{ synced ? "Synced" : `Syncing · ${blocksBehind.toLocaleString()} behind` }}
               </Badge>
             </div>
-            <p class="muted dash__statsub">Block {{ overview.network_height.toLocaleString() }}</p>
+            <p class="text-muted mt-[0.45rem] text-[0.85rem]">Block {{ overview.network_height.toLocaleString() }}</p>
           </div>
           <div>
-            <div class="stat__label">Session</div>
-            <div class="dash__statval">
-              <span class="dash__session-val">{{ sessionLeft ?? "—" }}</span>
+            <div class="text-muted text-[0.8rem] uppercase tracking-[0.05em]">Session</div>
+            <div class="min-h-[2.4rem] mt-[0.35rem] flex items-end">
+              <span class="text-[1.1rem] font-semibold">{{ sessionLeft ?? "—" }}</span>
             </div>
-            <Btn variant="ghost" size="sm" class="dash__statsub" @click="keepAlive">
+            <Btn variant="ghost" size="sm" class="mt-[0.45rem]" @click="keepAlive">
               Keep alive
             </Btn>
           </div>
-          <div class="dash__actions">
-            <Btn variant="primary" @click="openSend">Send XNV</Btn>
-            <Btn variant="ghost" @click="load">Refresh</Btn>
+          <div class="flex flex-col justify-center gap-2 min-w-[150px] max-[860px]:flex-row">
+            <Btn variant="primary" class="max-[860px]:flex-1" @click="openSend">Send XNV</Btn>
+            <Btn variant="ghost" class="max-[860px]:flex-1" @click="load">Refresh</Btn>
           </div>
         </div>
       </Card>
 
-      <div class="dash__mid">
-        <Card class="center">
-          <div class="seg">
-            <button type="button" class="seg__btn"
-              :class="{ 'seg__btn--on': receiveMode === 'address' }"
+      <div class="grid grid-cols-[300px_1fr] gap-5 items-start max-[640px]:grid-cols-1">
+        <Card ref="recvCard" class="text-center">
+          <div class="inline-flex gap-[2px] mb-4 p-[3px] bg-bg-soft border border-border rounded-field">
+            <button type="button"
+              class="border-0 text-[0.85rem] font-semibold px-[0.9rem] py-[0.3rem] rounded-[8px] cursor-pointer"
+              :class="receiveMode === 'address' ? 'bg-surface text-text' : 'bg-transparent text-muted'"
               @click="receiveMode = 'address'">Address</button>
-            <button type="button" class="seg__btn"
-              :class="{ 'seg__btn--on': receiveMode === 'integrated' }"
+            <button type="button"
+              class="border-0 text-[0.85rem] font-semibold px-[0.9rem] py-[0.3rem] rounded-[8px] cursor-pointer"
+              :class="receiveMode === 'integrated' ? 'bg-surface text-text' : 'bg-transparent text-muted'"
               @click="showIntegrated">Integrated</button>
           </div>
 
           <template v-if="receiveMode === 'address'">
-            <div class="qr-box" :class="{ 'qr-box--loading': !addrQrLoaded }">
-              <img v-show="addrQrLoaded" class="qr-img" :src="qrSrc"
+            <div class="w-full max-w-[240px] aspect-square mx-auto flex items-center justify-center rounded-field p-2"
+              :class="addrQrLoaded ? 'bg-white' : 'bg-transparent border border-border'">
+              <img v-show="addrQrLoaded" class="w-full h-full object-contain block" :src="qrSrc"
                 @load="addrQrLoaded = true" alt="Wallet address QR code" />
-              <div v-if="!addrQrLoaded" class="spinner"></div>
+              <div v-if="!addrQrLoaded" class="size-[42px] rounded-full border-[3px] border-border border-t-accent animate-spin"></div>
             </div>
             <CopyField
-              style="margin-top: 0.75rem"
+              class="mt-3"
               :value="overview.address"
               :display="shortenAddress(overview.address, 10, 8)"
             />
           </template>
 
           <template v-else>
-            <div class="qr-box" :class="{ 'qr-box--loading': intLoading || !intQr }">
-              <img v-if="intQr && !intLoading" class="qr-img" :src="intQr" alt="Integrated address QR code" />
-              <div v-else-if="intLoading" class="spinner"></div>
+            <div class="w-full max-w-[240px] aspect-square mx-auto flex items-center justify-center rounded-field p-2"
+              :class="intLoading || !intQr ? 'bg-transparent border border-border' : 'bg-white'">
+              <img v-if="intQr && !intLoading" class="w-full h-full object-contain block" :src="intQr" alt="Integrated address QR code" />
+              <div v-else-if="intLoading" class="size-[42px] rounded-full border-[3px] border-border border-t-accent animate-spin"></div>
             </div>
             <CopyField
-              style="margin-top: 0.75rem"
+              class="mt-3"
               :value="intAddr"
               :display="intAddr ? shortenAddress(intAddr, 10, 8) : ''"
               :loading="intLoading || !intAddr"
             />
-            <div class="field pid-field" style="width: 100%; margin: 0.6rem 0 0; text-align: left">
-              <div class="field__label">
+            <div class="flex flex-col gap-[0.4rem] w-full mt-[0.6rem] text-left">
+              <div class="flex items-center gap-[0.4rem]">
                 <label for="intpid">Payment ID</label>
                 <InfoTip
+                  centered
                   text="A tag embedded in the integrated address to identify incoming payments. A random 16-character hex value is filled in for you — type or paste your own to use a specific one (it applies automatically), or use the refresh button for a new random one."
                 />
               </div>
-              <div class="field__row">
-                <div v-if="intLoading && !intCustomLoad" class="input" aria-hidden="true">
-                  <span class="skel-bar"></span>
+              <div class="flex gap-2">
+                <div v-if="intLoading && !intCustomLoad"
+                  class="flex-1 w-full px-[0.85rem] py-[0.625rem] bg-bg-soft border border-border rounded-field" aria-hidden="true">
+                  <span class="inline-block align-middle w-full h-[0.95rem] rounded-[4px] skel"></span>
                 </div>
-                <input v-else id="intpid" class="input" v-model="intPid" @input="onPidInput"
+                <input v-else id="intpid"
+                  class="flex-1 w-full px-[0.85rem] py-[0.625rem] bg-bg-soft border border-border rounded-field text-text font-mono text-[0.82rem] focus:border-accent focus:outline-none disabled:opacity-60 disabled:cursor-default"
+                  v-model="intPid" @input="onPidInput"
                   :disabled="intLoading" placeholder="16-character hex" autocomplete="off"
                   spellcheck="false" />
-                <button type="button" class="icon-btn" :disabled="intLoading"
+                <button type="button" :disabled="intLoading"
+                  class="inline-flex items-center justify-center w-[38px] h-auto rounded-field border border-border bg-surface text-text-dim cursor-pointer hover:text-text hover:border-accent [&_svg]:size-[18px]"
                   title="Generate a random payment ID"
                   aria-label="Generate a random payment ID" @click="regenerateIntegrated">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -446,15 +460,16 @@ async function remove(): Promise<void> {
                   </svg>
                 </button>
               </div>
-              <p v-if="intErr" class="field__error">{{ intErr }}</p>
+              <p v-if="intErr" class="m-0 mt-[0.1rem] text-[0.82rem] text-danger">{{ intErr }}</p>
             </div>
           </template>
         </Card>
 
-        <Card class="dash__tx" title="Transactions">
-          <p v-if="!txList.length" class="muted">No transactions yet.</p>
-          <div v-else class="table-wrap">
-            <table>
+        <Card ref="txCard" class="flex flex-col" title="Transactions">
+          <p v-if="!txList.length" class="text-muted">No transactions yet.</p>
+          <div v-else class="border border-border rounded-card flex-1 min-h-0 overflow-auto">
+            <table
+              class="w-full border-collapse text-[0.9rem] [&_th]:px-4 [&_th]:py-3 [&_th]:text-left [&_th]:whitespace-nowrap [&_td]:px-4 [&_td]:py-3 [&_td]:whitespace-nowrap [&_thead_th]:text-muted [&_thead_th]:font-semibold [&_thead_th]:text-[0.78rem] [&_thead_th]:uppercase [&_thead_th]:tracking-[0.04em] [&_thead_th]:border-b [&_thead_th]:border-border [&_tbody_tr+tr_td]:border-t [&_tbody_tr+tr_td]:border-border-soft [&_.num]:text-right [&_td.num]:font-mono">
               <thead>
                 <tr>
                   <th>Type</th>
@@ -469,9 +484,9 @@ async function remove(): Promise<void> {
                   <td>
                     <Badge :variant="tx.type === 'in' ? 'in' : 'out'">{{ tx.type }}</Badge>
                   </td>
-                  <td class="dim">{{ formatTimestamp(tx.timestamp) }}</td>
+                  <td class="text-text-dim">{{ formatTimestamp(tx.timestamp) }}</td>
                   <td>
-                    <a class="tx-link" :href="`https://explorer.nerva.one/detail/${tx.txid}`"
+                    <a class="font-mono text-[0.85rem]" :href="`https://explorer.nerva.one/detail/${tx.txid}`"
                       target="_blank" rel="noopener">{{ shortenAddress(tx.txid, 8, 6) }}</a>
                   </td>
                   <td class="num">{{ fromAtomic(tx.amount) }}</td>
@@ -484,15 +499,15 @@ async function remove(): Promise<void> {
       </div>
 
       <Card title="Wallet tools">
-        <div class="dash__tools">
-          <Btn variant="ghost" @click="secretsOpen = true">View secrets</Btn>
-          <Btn variant="danger" @click="deleteOpen = true">Delete wallet</Btn>
+        <div class="flex flex-wrap gap-2">
+          <Btn variant="ghost" class="flex-1 min-w-[180px]" @click="secretsOpen = true">View secrets</Btn>
+          <Btn variant="danger" class="flex-1 min-w-[180px]" @click="deleteOpen = true">Delete wallet</Btn>
         </div>
       </Card>
     </div>
 
     <BaseModal :open="sendOpen" title="Send XNV" @close="sendOpen = false">
-      <Alert v-if="sendErr" style="margin-bottom: 1rem">{{ sendErr }}</Alert>
+      <Alert v-if="sendErr" class="mb-4">{{ sendErr }}</Alert>
       <form @submit.prevent="send">
         <FormField label="Destination address" input-id="sa">
           <input id="sa" class="input" v-model="sendAddr" autocomplete="off" required />
@@ -509,8 +524,8 @@ async function remove(): Promise<void> {
           input-id="sp"
           hint="An optional 16-character hex tag some exchanges or services require to credit your deposit. Leave it empty unless the recipient asks for one."
         >
-          <div class="field__row">
-            <input id="sp" class="input" v-model="sendPid" autocomplete="off" />
+          <div class="flex gap-2">
+            <input id="sp" class="input flex-1" v-model="sendPid" autocomplete="off" />
             <Btn variant="ghost" @click="generatePaymentId">Generate</Btn>
           </div>
         </FormField>
@@ -522,10 +537,10 @@ async function remove(): Promise<void> {
 
     <BaseModal :open="secretsOpen" title="Wallet secrets" @close="closeSecrets">
       <template v-if="!secrets">
-        <p class="modal__lead">
+        <p class="text-text-dim text-[0.95rem] m-0 mb-5">
           Enter your account password to reveal your seed and keys. Never share these with anyone.
         </p>
-        <Alert v-if="secretErr" style="margin-bottom: 1rem">{{ secretErr }}</Alert>
+        <Alert v-if="secretErr" class="mb-4">{{ secretErr }}</Alert>
         <form @submit.prevent="reveal">
           <FormField label="Account password" input-id="secp">
             <input id="secp" class="input" type="password" v-model="secretPass"
@@ -538,22 +553,23 @@ async function remove(): Promise<void> {
       </template>
 
       <div v-else>
-        <Alert variant="warning" style="margin-bottom: 1rem">
+        <Alert variant="warning" class="mb-4">
           Keep these private. Anyone with your seed can take your funds.
         </Alert>
-        <div v-for="f in secretFields" :key="f.key" class="secret-row">
-          <span class="label">{{ f.label }}</span>
+        <div v-for="f in secretFields" :key="f.key"
+          class="flex flex-col gap-1 py-[0.6rem] border-t border-border-soft first:border-t-0">
+          <span class="text-muted text-[0.78rem] uppercase tracking-[0.04em]">{{ f.label }}</span>
           <CopyField :value="secrets[f.key]" wrap />
         </div>
       </div>
     </BaseModal>
 
     <BaseModal :open="deleteOpen" title="Delete wallet" @close="deleteOpen = false">
-      <p class="modal__lead">
+      <p class="text-text-dim text-[0.95rem] m-0 mb-5">
         This permanently deletes your wallet data from our servers. If you have funds, make sure you
         have saved your seed first — this cannot be undone.
       </p>
-      <div class="stack" style="gap: 0.5rem">
+      <div class="flex flex-col gap-2">
         <Btn variant="danger" block :disabled="deleting" @click="remove">
           {{ deleting ? "Deleting…" : "Yes, delete my wallet" }}
         </Btn>

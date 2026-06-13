@@ -39,25 +39,37 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="page container">
-    <div class="hero">
-      <h1>Your XNV, in the browser</h1>
-      <p>
+  <section class="flex-[1_0_auto] pt-10 pb-16 w-full max-w-[1080px] mx-auto">
+    <div class="text-center pt-12 pb-4">
+      <h1 class="text-[clamp(2rem,5vw,3rem)] tracking-[-0.03em] bg-[image:var(--grad)] bg-clip-text text-transparent">Your XNV, in the browser</h1>
+      <p class="text-text-dim max-w-[560px] mx-auto mb-6 text-[1.1rem]">
         NerVault is a custodial web wallet for the Nerva (XNV) cryptocurrency. Create or restore a
         wallet, check your balance, and send XNV — no software to install.
       </p>
-      <div class="stack" style="flex-direction: row; justify-content: center; gap: 0.75rem">
+      <div class="flex flex-row justify-center gap-3">
         <template v-if="auth.isAuthenticated">
-          <RouterLink class="btn btn--primary btn--lg" to="/wallet/dashboard">Open wallet</RouterLink>
+          <RouterLink
+            class="inline-flex items-center justify-center gap-2 border border-transparent font-semibold cursor-pointer transition px-8 py-4 text-[1.05rem] rounded-card bg-accent text-accent-contrast hover:bg-accent-strong hover:no-underline"
+            to="/wallet/dashboard"
+            >Open wallet</RouterLink
+          >
         </template>
         <template v-else>
-          <RouterLink class="btn btn--primary btn--lg" to="/register">Get started</RouterLink>
-          <RouterLink class="btn btn--ghost btn--lg" to="/login">Login</RouterLink>
+          <RouterLink
+            class="inline-flex items-center justify-center gap-2 border border-transparent font-semibold cursor-pointer transition px-8 py-4 text-[1.05rem] rounded-card bg-accent text-accent-contrast hover:bg-accent-strong hover:no-underline"
+            to="/register"
+            >Get started</RouterLink
+          >
+          <RouterLink
+            class="inline-flex items-center justify-center gap-2 border border-border font-semibold cursor-pointer transition px-8 py-4 text-[1.05rem] rounded-card bg-surface text-text hover:border-accent hover:no-underline"
+            to="/login"
+            >Login</RouterLink
+          >
         </template>
       </div>
     </div>
 
-    <div class="grid grid--stats" style="margin-top: 2rem">
+    <div class="grid gap-4 grid-cols-[repeat(auto-fit,minmax(180px,1fr))] mt-8">
       <Stat label="Block height">{{ num(info?.node.height) }}</Stat>
       <Stat label="Difficulty">{{ num(info?.node.difficulty) }}</Stat>
       <Stat label="Price">{{ usd(info?.coin.current_price) }}</Stat>

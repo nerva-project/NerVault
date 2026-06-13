@@ -59,15 +59,15 @@ async function restore(): Promise<void> {
 </script>
 
 <template>
-  <section class="page container page--narrow">
+  <section class="flex-[1_0_auto] pt-10 pb-16 w-full max-w-[520px] mx-auto flex flex-col justify-center">
     <Card>
-      <h1 class="card__title">Set up your wallet</h1>
+      <h1 class="text-[1.1rem] font-bold mb-4">Set up your wallet</h1>
 
-      <Alert v-if="error" style="margin-bottom: 1rem">{{ error }}</Alert>
+      <Alert v-if="error" class="mb-4">{{ error }}</Alert>
 
       <template v-if="mode === 'choose'">
-        <p class="dim">Create a brand-new Nerva wallet, or restore an existing one from its seed.</p>
-        <div class="stack" style="margin-top: 1.25rem">
+        <p class="text-text-dim">Create a brand-new Nerva wallet, or restore an existing one from its seed.</p>
+        <div class="flex flex-col gap-4 mt-5">
           <Btn variant="primary" block :disabled="loading" @click="create">
             {{ loading ? "Creating…" : "Create a new wallet" }}
           </Btn>
@@ -79,14 +79,16 @@ async function restore(): Promise<void> {
 
       <template v-else>
         <FormField label="25-word mnemonic seed" input-id="seed">
-          <textarea id="seed" class="textarea" v-model="seed" placeholder="word1 word2 word3 …"
+          <textarea id="seed"
+            class="w-full px-[0.85rem] py-[0.7rem] bg-bg-soft border border-border rounded-field text-text resize-y min-h-[90px] font-mono text-[0.9rem] focus:border-accent focus:outline-none"
+            v-model="seed" placeholder="word1 word2 word3 …"
             autocomplete="off" spellcheck="false"></textarea>
         </FormField>
-        <label class="checkbox">
-          <input type="checkbox" v-model="agree" />
+        <label class="flex items-start gap-[0.55rem] text-[0.9rem] text-text-dim mb-3">
+          <input type="checkbox" v-model="agree" class="mt-[0.2rem] accent-accent" />
           <span>I understand this is a custodial wallet and accept the associated risks.</span>
         </label>
-        <div class="stack" style="margin-top: 0.5rem">
+        <div class="flex flex-col gap-4 mt-2">
           <Btn variant="primary" block :disabled="loading" @click="restore">
             {{ loading ? "Restoring…" : "Restore wallet" }}
           </Btn>

@@ -47,20 +47,20 @@ const fiat = [
   <BaseModal :open="open" @close="$emit('close')">
     <template #title>Support <b>NerVault</b></template>
 
-    <p class="modal__lead">
+    <p class="text-text-dim text-[0.95rem] m-0 mb-5">
       NerVault is free to use, but its development and hosting are not. If you find it useful,
       please consider chipping in.
     </p>
 
-    <div class="donate">
-      <div v-for="c in coins" :key="c.ticker" class="donate__row">
-        <span class="donate__coin">{{ c.label }} <span class="donate__tick">{{ c.ticker }}</span></span>
+    <div class="flex flex-col gap-[0.85rem]">
+      <div v-for="c in coins" :key="c.ticker" class="flex flex-col gap-[0.4rem]">
+        <span class="font-semibold">{{ c.label }} <span class="text-muted text-[0.8rem]">{{ c.ticker }}</span></span>
         <CopyField :value="c.address" wrap />
       </div>
     </div>
 
-    <div class="donate__fiat">
-      <span class="donate__fiatlabel">Prefer fiat?</span>
+    <div class="mt-4 flex flex-wrap gap-x-4 gap-y-2 items-center text-[0.85rem]">
+      <span class="text-muted">Prefer fiat?</span>
       <a v-for="f in fiat" :key="f.url" :href="f.url" target="_blank" rel="noopener">{{ f.label }}</a>
     </div>
   </BaseModal>

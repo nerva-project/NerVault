@@ -100,19 +100,28 @@ onUnmounted(() => {
 
 <template>
   <Teleport to="body">
-    <Transition name="modal">
-      <div v-if="open" class="modal" role="dialog" aria-modal="true"
+    <Transition
+      enter-active-class="transition-opacity duration-[180ms]"
+      leave-active-class="transition-opacity duration-[180ms]"
+      enter-from-class="opacity-0" leave-to-class="opacity-0">
+      <div v-if="open"
+        class="fixed inset-0 z-[60] flex items-center justify-center p-5 bg-black/60 backdrop-blur-[4px]"
+        role="dialog" aria-modal="true"
         :aria-labelledby="title || $slots.title ? titleId : undefined" @click.self="close">
-        <div ref="panel" class="modal__panel" @click="onPanelClick">
-          <button ref="closeEl" class="modal__close" type="button" aria-label="Close" @click="close">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        <div ref="panel"
+          class="relative w-full max-w-[540px] max-h-[90vh] overflow-y-auto bg-surface border border-border rounded-card p-7 shadow-card"
+          @click="onPanelClick">
+          <button ref="closeEl"
+            class="absolute top-4 right-4 size-[32px] inline-flex items-center justify-center border-none bg-transparent text-muted cursor-pointer"
+            type="button" aria-label="Close" @click="close">
+            <svg class="size-[20px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               stroke-linecap="round" stroke-linejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
 
-          <h2 v-if="title || $slots.title" :id="titleId" class="modal__title">
+          <h2 v-if="title || $slots.title" :id="titleId" class="text-[1.3rem] mb-2">
             <slot name="title">{{ title }}</slot>
           </h2>
 

@@ -29,10 +29,10 @@ onUnmounted(() => clearInterval(timer))
 </script>
 
 <template>
-  <section class="page container page--narrow center">
-    <img src="/maintenance.png" alt="" style="max-width: 200px; margin: 2rem auto 1rem; display: block" />
+  <section class="flex-[1_0_auto] pt-10 pb-16 w-full max-w-[520px] mx-auto flex flex-col justify-center text-center">
+    <img src="/maintenance.png" alt="" class="max-w-[200px] mx-auto mt-8 mb-4 block" />
     <h1>Under maintenance</h1>
-    <p class="dim">
+    <p class="text-text-dim">
       NerVault is temporarily down for maintenance. Please check back shortly — this page refreshes
       automatically.
     </p>

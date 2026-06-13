@@ -80,12 +80,12 @@ onUnmounted(stop)
 </script>
 
 <template>
-  <section class="page container page--narrow center">
+  <section class="flex-[1_0_auto] pt-10 pb-16 w-full max-w-[520px] mx-auto flex flex-col justify-center text-center">
     <Card>
-      <div class="spinner"></div>
-      <h1 class="card__title">Loading your wallet</h1>
-      <p class="dim">{{ statusText }}</p>
-      <p class="muted" style="font-size: 0.85rem">
+      <div class="size-[42px] rounded-full border-[3px] border-border border-t-accent animate-spin mx-auto my-6"></div>
+      <h1 class="text-[1.1rem] font-bold mb-4">Loading your wallet</h1>
+      <p class="text-text-dim">{{ statusText }}</p>
+      <p class="text-muted text-[0.85rem]">
         This can take a moment while the wallet container starts and syncs with the network.
       </p>
     </Card>

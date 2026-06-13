@@ -3,7 +3,10 @@ defineProps<{ variant: "in" | "out" }>()
 </script>
 
 <template>
-  <span class="badge" :class="`badge--${variant}`">
+  <span
+    class="inline-flex items-center px-[0.55rem] py-[0.15rem] rounded-full text-[0.75rem] font-semibold capitalize"
+    :class="variant === 'in' ? 'text-in bg-in/[0.14]' : 'text-out bg-out/[0.14]'"
+  >
     <slot />
   </span>
 </template>

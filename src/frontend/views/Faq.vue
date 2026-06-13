@@ -5,22 +5,22 @@ import PageHeader from "../components/ui/PageHeader.vue"
 </script>
 
 <template>
-  <section class="page container page--content">
+  <section class="flex-[1_0_auto] pt-10 pb-16 w-full max-w-[680px] mx-auto">
     <PageHeader
       title="Frequently Asked Questions"
       lead="Common questions about NerVault and using a custodial XNV wallet."
     />
 
-    <div class="faq">
-      <details class="faq__item" open>
-        <summary class="faq__q">
+    <div class="flex flex-col gap-3">
+      <details class="group border border-border rounded-card bg-surface" open>
+        <summary class="flex items-center justify-between gap-4 px-5 py-4 font-semibold text-text cursor-pointer list-none [&::-webkit-details-marker]:hidden hover:text-accent">
           What is NerVault?
-          <svg class="faq__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          <svg class="size-[18px] shrink-0 text-muted transition-transform duration-200 group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor"
             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </summary>
-        <div class="faq__a">
+        <div class="px-5 pb-5 text-text-dim">
           <p>
             NerVault is a custodial web wallet for Nerva (XNV), a decentralized, peer-to-peer,
             open-source cryptocurrency. It lets you create or restore a wallet and send and receive
@@ -29,15 +29,15 @@ import PageHeader from "../components/ui/PageHeader.vue"
         </div>
       </details>
 
-      <details class="faq__item">
-        <summary class="faq__q">
+      <details class="group border border-border rounded-card bg-surface">
+        <summary class="flex items-center justify-between gap-4 px-5 py-4 font-semibold text-text cursor-pointer list-none [&::-webkit-details-marker]:hidden hover:text-accent">
           How does it work?
-          <svg class="faq__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          <svg class="size-[18px] shrink-0 text-muted transition-transform duration-200 group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor"
             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </summary>
-        <div class="faq__a">
+        <div class="px-5 pb-5 text-text-dim">
           <p>
             When you register, you choose to either generate a new Nerva wallet or restore an existing
             one from a seed. Your wallet is tied to your account, and each wallet runs in its own
@@ -47,15 +47,15 @@ import PageHeader from "../components/ui/PageHeader.vue"
         </div>
       </details>
 
-      <details class="faq__item">
-        <summary class="faq__q">
+      <details class="group border border-border rounded-card bg-surface">
+        <summary class="flex items-center justify-between gap-4 px-5 py-4 font-semibold text-text cursor-pointer list-none [&::-webkit-details-marker]:hidden hover:text-accent">
           What does &ldquo;custodial&rdquo; mean, and is it safe?
-          <svg class="faq__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          <svg class="size-[18px] shrink-0 text-muted transition-transform duration-200 group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor"
             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </summary>
-        <div class="faq__a">
+        <div class="px-5 pb-5 text-text-dim">
           <p>
             Custodial means NerVault holds your wallet files and the secret used to unlock them on the
             server, so it can operate the wallet on your behalf. That is convenient, but riskier than
@@ -67,15 +67,15 @@ import PageHeader from "../components/ui/PageHeader.vue"
         </div>
       </details>
 
-      <details class="faq__item">
-        <summary class="faq__q">
+      <details class="group border border-border rounded-card bg-surface">
+        <summary class="flex items-center justify-between gap-4 px-5 py-4 font-semibold text-text cursor-pointer list-none [&::-webkit-details-marker]:hidden hover:text-accent">
           What information does NerVault store about me?
-          <svg class="faq__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          <svg class="size-[18px] shrink-0 text-muted transition-transform duration-200 group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor"
             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </summary>
-        <div class="faq__a">
+        <div class="px-5 pb-5 text-text-dim">
           <p>
             Your email address and a hashed password, standard web server logs, a record of in-app
             actions you take, and — because it is custodial — your wallet files and the secret used to
@@ -85,15 +85,15 @@ import PageHeader from "../components/ui/PageHeader.vue"
         </div>
       </details>
 
-      <details class="faq__item">
-        <summary class="faq__q">
+      <details class="group border border-border rounded-card bg-surface">
+        <summary class="flex items-center justify-between gap-4 px-5 py-4 font-semibold text-text cursor-pointer list-none [&::-webkit-details-marker]:hidden hover:text-accent">
           How do I move my funds somewhere safer?
-          <svg class="faq__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          <svg class="size-[18px] shrink-0 text-muted transition-transform duration-200 group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor"
             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </summary>
-        <div class="faq__a">
+        <div class="px-5 pb-5 text-text-dim">
           <p>
             Use <b>Send XNV</b> to transfer to any Nerva address, including a wallet you run yourself.
             You can also reveal your mnemonic seed under <b>Wallet → View secrets</b> and import it
@@ -102,15 +102,15 @@ import PageHeader from "../components/ui/PageHeader.vue"
         </div>
       </details>
 
-      <details class="faq__item">
-        <summary class="faq__q">
+      <details class="group border border-border rounded-card bg-surface">
+        <summary class="flex items-center justify-between gap-4 px-5 py-4 font-semibold text-text cursor-pointer list-none [&::-webkit-details-marker]:hidden hover:text-accent">
           What happens to my wallet when I log out or leave it idle?
-          <svg class="faq__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          <svg class="size-[18px] shrink-0 text-muted transition-transform duration-200 group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor"
             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </summary>
-        <div class="faq__a">
+        <div class="px-5 pb-5 text-text-dim">
           <p>
             To save resources, the live wallet process is shut down after your session expires (about
             an hour). Your wallet itself is preserved — it reconnects automatically the next time you
@@ -119,15 +119,15 @@ import PageHeader from "../components/ui/PageHeader.vue"
         </div>
       </details>
 
-      <details class="faq__item">
-        <summary class="faq__q">
+      <details class="group border border-border rounded-card bg-surface">
+        <summary class="flex items-center justify-between gap-4 px-5 py-4 font-semibold text-text cursor-pointer list-none [&::-webkit-details-marker]:hidden hover:text-accent">
           How do I delete my wallet and data?
-          <svg class="faq__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          <svg class="size-[18px] shrink-0 text-muted transition-transform duration-200 group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor"
             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </summary>
-        <div class="faq__a">
+        <div class="px-5 pb-5 text-text-dim">
           <p>
             <b>Wallet → Delete wallet</b> permanently removes your wallet data from the server. Make
             sure you have saved your seed first — this cannot be undone.
@@ -135,15 +135,15 @@ import PageHeader from "../components/ui/PageHeader.vue"
         </div>
       </details>
 
-      <details class="faq__item">
-        <summary class="faq__q">
+      <details class="group border border-border rounded-card bg-surface">
+        <summary class="flex items-center justify-between gap-4 px-5 py-4 font-semibold text-text cursor-pointer list-none [&::-webkit-details-marker]:hidden hover:text-accent">
           What should I use instead?
-          <svg class="faq__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          <svg class="size-[18px] shrink-0 text-muted transition-transform duration-200 group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor"
             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </summary>
-        <div class="faq__a">
+        <div class="px-5 pb-5 text-text-dim">
           <p>
             For the safest option, run your own wallet. Get the latest CLI or GUI from the
             <a href="https://nerva.one/downloads" target="_blank" rel="noopener">Nerva Downloads</a>

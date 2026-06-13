@@ -51,11 +51,11 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
-  <section class="page container page--narrow">
+  <section class="flex-[1_0_auto] pt-10 pb-16 w-full max-w-[520px] mx-auto flex flex-col justify-center">
     <Card>
-      <h1 class="card__title">Create an account</h1>
+      <h1 class="text-[1.1rem] font-bold mb-4">Create an account</h1>
 
-      <Alert v-if="error" style="margin-bottom: 1rem">{{ error }}</Alert>
+      <Alert v-if="error" class="mb-4">{{ error }}</Alert>
 
       <form @submit.prevent="submit">
         <FormField label="Username" input-id="username">
@@ -73,8 +73,8 @@ async function submit(): Promise<void> {
             autocomplete="new-password" required />
         </FormField>
 
-        <label class="checkbox">
-          <input type="checkbox" v-model="reviewed" />
+        <label class="flex items-start gap-[0.55rem] text-[0.9rem] text-text-dim mb-3">
+          <input type="checkbox" v-model="reviewed" class="mt-[0.2rem] accent-accent" />
           <span>
             I have read and agree to the
             <RouterLink to="/faq" target="_blank">FAQ</RouterLink>,
@@ -88,7 +88,7 @@ async function submit(): Promise<void> {
         </Btn>
       </form>
 
-      <p class="dim" style="margin-top: 1rem; font-size: 0.9rem">
+      <p class="text-text-dim mt-4 text-[0.9rem]">
         Already have an account? <RouterLink to="/login">Login</RouterLink>
       </p>
     </Card>

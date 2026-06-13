@@ -25,10 +25,10 @@ async function resend(): Promise<void> {
 </script>
 
 <template>
-  <section class="page container page--narrow">
-    <Card class="center">
-      <h1 class="card__title">Confirm your email</h1>
-      <p class="dim">
+  <section class="flex-[1_0_auto] pt-10 pb-16 w-full max-w-[520px] mx-auto flex flex-col justify-center">
+    <Card class="text-center">
+      <h1 class="text-[1.1rem] font-bold mb-4">Confirm your email</h1>
+      <p class="text-text-dim">
         We've sent a confirmation link to <b>{{ auth.user?.email }}</b>. Please click it to activate
         your account. Check your Junk/Spam folder if you don't see it.
       </p>

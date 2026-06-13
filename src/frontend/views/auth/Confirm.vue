@@ -33,9 +33,9 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="page container page--narrow">
-    <Card class="center">
-      <h1 class="card__title">Account confirmation</h1>
+  <section class="flex-[1_0_auto] pt-10 pb-16 w-full max-w-[520px] mx-auto flex flex-col justify-center">
+    <Card class="text-center">
+      <h1 class="text-[1.1rem] font-bold mb-4">Account confirmation</h1>
 
       <div v-if="state === 'loading'">
         <Spinner label="Confirming your account…" />
@@ -43,12 +43,12 @@ onMounted(async () => {
 
       <div v-else-if="state === 'success'">
         <Alert variant="success">{{ message }}</Alert>
-        <p class="dim" style="margin-top: 1rem">Redirecting…</p>
+        <p class="text-text-dim mt-4">Redirecting…</p>
       </div>
 
       <div v-else>
         <Alert>{{ message }}</Alert>
-        <p style="margin-top: 1rem"><RouterLink to="/login">Back to login</RouterLink></p>
+        <p class="mt-4"><RouterLink to="/login">Back to login</RouterLink></p>
       </div>
     </Card>
   </section>
