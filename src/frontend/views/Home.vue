@@ -28,6 +28,38 @@ function usd(value: number | string | undefined): string {
     : "—"
 }
 
+function price(value: number | string | undefined): string {
+  if (value === undefined || value === null) return "—"
+  const n = typeof value === "number" ? value : Number(value)
+  return Number.isFinite(n)
+    ? n.toLocaleString(undefined, {
+        style: "currency",
+        currency: "USD",
+        maximumSignificantDigits: 4,
+      })
+    : "—"
+}
+
+function hashrate(
+  difficulty: number | string | undefined,
+  target: number | string | undefined,
+): string {
+  if (difficulty === undefined || difficulty === null) return "—"
+  if (target === undefined || target === null) return "—"
+  const d = typeof difficulty === "number" ? difficulty : Number(difficulty)
+  const t = typeof target === "number" ? target : Number(target)
+  if (!Number.isFinite(d) || !Number.isFinite(t) || t <= 0) return "—"
+
+  let hs = d / t
+  const units = ["H/s", "KH/s", "MH/s", "GH/s", "TH/s"]
+  let i = 0
+  while (hs >= 1000 && i < units.length - 1) {
+    hs /= 1000
+    i++
+  }
+  return `${hs.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${units[i]}`
+}
+
 onMounted(async () => {
   try {
     const res = await api.get<MetaInfo>("/meta/info")
@@ -71,8 +103,9 @@ onMounted(async () => {
 
     <div class="grid gap-4 grid-cols-[repeat(auto-fit,minmax(180px,1fr))] mt-8">
       <Stat label="Block height">{{ num(info?.node.height) }}</Stat>
-      <Stat label="Difficulty">{{ num(info?.node.difficulty) }}</Stat>
-      <Stat label="Price">{{ usd(info?.coin.current_price) }}</Stat>
+      <Stat label="Network hashrate">{{ hashrate(info?.node.difficulty, info?.node.target) }}</Stat>
+      <Stat label="Price">{{ price(info?.coin.current_price) }}</Stat>
+      <Stat label="24h volume">{{ usd(info?.coin.total_volume) }}</Stat>
       <Stat label="Market cap">{{ usd(info?.coin.market_cap) }}</Stat>
     </div>
   </section>
