@@ -2,10 +2,17 @@ import { defineStore } from "pinia"
 
 import { api } from "../lib/api"
 
+export interface TwoFactorState {
+  email: boolean
+  totp: boolean
+  method: "email" | "totp" | null
+}
+
 export interface User {
   username: string
   email: string
   confirmed: boolean
+  two_factor?: TwoFactorState
 }
 
 interface AuthState {

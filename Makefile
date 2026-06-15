@@ -28,6 +28,10 @@ reset-wallet:
 	@if [ -z "$(filter-out $@,$(MAKECMDGOALS))" ]; then echo "Usage: make reset-wallet <username>"; exit 1; fi
 	QUART_APP=backend.launcher:app uv run quart reset_wallet $(filter-out $@,$(MAKECMDGOALS))
 
+reset-2fa:
+	@if [ -z "$(filter-out $@,$(MAKECMDGOALS))" ]; then echo "Usage: make reset-2fa <username>"; exit 1; fi
+	QUART_APP=backend.launcher:app uv run quart reset_2fa $(filter-out $@,$(MAKECMDGOALS))
+
 lint:
 	uv run ruff check --fix .
 	uv run ruff format .
@@ -35,7 +39,7 @@ lint:
 typecheck:
 	uv run mypy src/backend
 
-.PHONY: install install-dev install-prod image dev serve prod maintenance-enable maintenance-disable reset-wallet lint typecheck
+.PHONY: install install-dev install-prod image dev serve prod maintenance-enable maintenance-disable reset-wallet reset-2fa lint typecheck
 .DEFAULT_GOAL := dev
 
 %:

@@ -26,7 +26,7 @@ from backend.factory import cache, bcrypt, daemon, docker
 from backend.library.rpc import Wallet
 from backend.utils.models import User
 from backend.library.utils import to_atomic, sort_transactions
-from backend.library.helpers import capture_event
+from backend.library.helpers import capture_event, verify_2fa_code
 from backend.utils.decorators import check_confirmed
 from backend.library.validation import validate_seed
 
@@ -541,6 +541,9 @@ async def _transfer() -> tuple[Response, int]:
     """
     Relays the transaction the user reviewed via /transfer/prepare.
     """
+    data = await request.get_json(silent=True) or {}
+    code = str(data.get("code") or "")
+
     wallet = _wallet_rpc(timeout=30)
 
     if not await wallet.connected:
@@ -563,6 +566,11 @@ async def _transfer() -> tuple[Response, int]:
                 "code": "expired",
             }
         ), 409
+
+    if not await verify_2fa_code(current_user, code):
+        return jsonify(
+            {"status": "error", "error": "Invalid or missing two-factor code."}
+        ), 401
 
     try:
         hashes = await wallet.relay(json.loads(raw))
@@ -722,9 +730,15 @@ async def _secrets() -> tuple[Response, int]:
     """
     data = await request.get_json(silent=True) or {}
     password = str(data.get("password") or "")
+    code = str(data.get("code") or "")
 
     if not bcrypt.check_password_hash(current_user.password, password):
         return jsonify({"status": "error", "error": "Invalid password."}), 401
+
+    if not await verify_2fa_code(current_user, code):
+        return jsonify(
+            {"status": "error", "error": "Invalid or missing two-factor code."}
+        ), 401
 
     wallet = _wallet_rpc()
 

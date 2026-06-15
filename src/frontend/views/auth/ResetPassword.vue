@@ -6,6 +6,7 @@ import Alert from "../../components/ui/Alert.vue"
 import Btn from "../../components/ui/Btn.vue"
 import Card from "../../components/ui/Card.vue"
 import FormField from "../../components/ui/FormField.vue"
+import PasswordInput from "../../components/ui/PasswordInput.vue"
 import { api, ApiError } from "../../lib/api"
 import { useToast } from "../../composables/useToast"
 
@@ -52,12 +53,10 @@ async function submit(): Promise<void> {
 
       <form @submit.prevent="submit">
         <FormField label="New password" input-id="password">
-          <input id="password" class="input" type="password" v-model="password"
-            autocomplete="new-password" required />
+          <PasswordInput id="password" v-model="password" autocomplete="new-password" required />
         </FormField>
         <FormField label="Confirm password" input-id="confirm">
-          <input id="confirm" class="input" type="password" v-model="confirm"
-            autocomplete="new-password" required />
+          <PasswordInput id="confirm" v-model="confirm" autocomplete="new-password" required />
         </FormField>
         <Btn type="submit" variant="primary" block :disabled="loading">
           {{ loading ? "Saving…" : "Change password" }}

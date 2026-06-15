@@ -78,6 +78,7 @@ async function logout(): Promise<void> {
 
         <template v-if="auth.isAuthenticated">
           <RouterLink :class="navLink" to="/wallet/dashboard" @click="closeMenu">Wallet</RouterLink>
+          <RouterLink :class="navLink" to="/profile" @click="closeMenu">Profile</RouterLink>
           <button
             :class="[navLink, loggingOut && 'opacity-70 cursor-wait']"
             type="button"

@@ -1,5 +1,14 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import hmac
+
 from backend.factory import cache
 from backend.utils.models import Event
+
+if TYPE_CHECKING:
+    from backend.utils.models import User
 
 
 async def capture_event(username: str, category: str) -> None:
@@ -31,3 +40,41 @@ async def set_maintenance(enable: bool = False) -> None:
         await cache.redis.set("maintenance", 1)
     else:
         await cache.redis.delete("maintenance")
+
+
+async def verify_2fa_code(user: User, code: str) -> bool:
+    """
+    Verifies a step-up two-factor code for a sensitive action.
+
+    Returns True if the user has no 2FA enabled, or the supplied code is a valid
+    authenticator code (totp) or the emailed step-up code (email). Backup codes
+    are deliberately NOT accepted here: they are a login-recovery mechanism, not
+    a substitute factor for in-session sensitive actions.
+
+    Args:
+        user (User): The authenticated user performing the action.
+        code (str): The code supplied by the client (ignored when 2FA is off).
+
+    Returns:
+        bool: True if the step-up check passes, else False.
+    """
+    method = user.two_factor_method
+    if method is None:
+        return True
+
+    code = code.strip()
+    if not code:
+        return False
+
+    if method == "totp" and user.totp_secret:
+        import pyotp
+
+        return pyotp.TOTP(user.totp_secret).verify(code, valid_window=1)
+
+    if method == "email":
+        stored = await cache.get_data(f"2fa:stepup:{user.username}")
+        if stored and hmac.compare_digest(stored, code):
+            await cache.redis.delete(f"2fa:stepup:{user.username}")
+            return True
+
+    return False

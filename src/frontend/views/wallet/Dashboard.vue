@@ -11,6 +11,8 @@ import Btn from "../../components/ui/Btn.vue"
 import Card from "../../components/ui/Card.vue"
 import CopyField from "../../components/ui/CopyField.vue"
 import FormField from "../../components/ui/FormField.vue"
+import PasswordInput from "../../components/ui/PasswordInput.vue"
+import TwoFactorField from "../../components/ui/TwoFactorField.vue"
 import InfoTip from "../../components/ui/InfoTip.vue"
 import Spinner from "../../components/ui/Spinner.vue"
 import { useToast } from "../../composables/useToast"
@@ -259,6 +261,7 @@ const sending = ref(false)
 const sendErr = ref("")
 const confirmOpen = ref(false)
 const confirmErr = ref("")
+const sendCode = ref("")
 const prepared = ref<{ amount: number; fee: number } | null>(null)
 const sweepToggleDisabled = computed(() => !sendAddr.value.trim())
 
@@ -321,6 +324,7 @@ async function review(): Promise<void> {
       return
     }
     confirmErr.value = ""
+    sendCode.value = ""
     sendOpen.value = false
     confirmOpen.value = true
   } catch (e) {
@@ -358,10 +362,11 @@ async function confirmSend(): Promise<void> {
   confirmErr.value = ""
   sending.value = true
   try {
-    const res = await api.post("/wallet/transfer")
+    const res = await api.post("/wallet/transfer", { code: sendCode.value })
     toast.success(res.message || "Transaction sent.")
     confirmOpen.value = false
     prepared.value = null
+    sendCode.value = ""
     sendAddr.value = ""
     sendAmount.value = ""
     sendSweep.value = false
@@ -389,6 +394,7 @@ const secretPass = ref("")
 const secrets = ref<Record<string, string> | null>(null)
 const secretLoading = ref(false)
 const secretErr = ref("")
+const secretCode = ref("")
 
 const secretFields: { key: string; label: string }[] = [
   { key: "mnemonic_seed", label: "Mnemonic seed" },
@@ -402,6 +408,7 @@ function closeSecrets(): void {
   secretsOpen.value = false
   secrets.value = null
   secretPass.value = ""
+  secretCode.value = ""
   secretErr.value = ""
 }
 
@@ -411,6 +418,7 @@ async function reveal(): Promise<void> {
   try {
     const res = await api.post<Record<string, string>>("/wallet/secrets", {
       password: secretPass.value,
+      code: secretCode.value,
     })
     secrets.value = res.result ?? null
   } catch (e) {
@@ -686,6 +694,7 @@ async function remove(): Promise<void> {
           <span>{{ prepared ? fromAtomic(prepared.amount + prepared.fee) : "—" }} XNV</span>
         </div>
       </div>
+      <TwoFactorField v-model="sendCode" />
       <div class="flex gap-2">
         <Btn variant="ghost" class="flex-1" :disabled="sending" @click="backToReview">Back</Btn>
         <Btn variant="primary" class="flex-1" :disabled="sending" @click="confirmSend">
@@ -702,9 +711,9 @@ async function remove(): Promise<void> {
         <Alert v-if="secretErr" class="mb-4">{{ secretErr }}</Alert>
         <form @submit.prevent="reveal">
           <FormField label="Account password" input-id="secp">
-            <input id="secp" class="input" type="password" v-model="secretPass"
-              autocomplete="current-password" required />
+            <PasswordInput id="secp" v-model="secretPass" autocomplete="current-password" required />
           </FormField>
+          <TwoFactorField v-model="secretCode" />
           <Btn type="submit" variant="primary" block :disabled="secretLoading">
             {{ secretLoading ? "Verifying…" : "Reveal secrets" }}
           </Btn>

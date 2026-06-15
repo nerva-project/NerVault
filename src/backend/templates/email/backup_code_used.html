@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 30px auto;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eeeeee;
+        }
+        .header h1 {
+            font-size: 24px;
+            color: #5b9bd5;
+            margin: 0;
+        }
+        .content {
+            padding: 20px 0;
+        }
+        .content p {
+            margin: 10px 0;
+        }
+        .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #aaaaaa;
+            margin-top: 20px;
+        }
+    </style>
+    <title></title>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Backup Code Used</h1>
+        </div>
+        <div class="content">
+            <p>Hello there!</p>
+            <p>A backup code was just used to sign in to your NerVault account. You have <strong>{{ remaining }}</strong> backup code{{ '' if remaining == 1 else 's' }} remaining.</p>
+            <p>If you are running low, you can generate a new set from the Two-factor authentication section of your profile.</p>
+            <p>If this was <strong>not</strong> you, your account may be compromised. Please change your password and review your two-factor settings immediately.</p>
+        </div>
+        <div class="footer">
+            <p>Kind regards,<br>The NerVault Team</p>
+        </div>
+    </div>
+</body>
+</html>
