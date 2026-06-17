@@ -121,7 +121,6 @@ async def _status() -> tuple[Response, int]:
     Returns the current state of the user's wallet (created/connected/ready).
     """
     user_vol = docker.get_user_volume(current_user.username)
-    create_container = await cache.get_data(f"init_wallet_{current_user.username}")
 
     if current_user.wallet_created and current_user.wallet_connected:
         wallet_ready = await _wallet_rpc().connected
@@ -137,9 +136,9 @@ async def _status() -> tuple[Response, int]:
                 "port": current_user.wallet_port,
                 "container": current_user.wallet_container,
                 "volume": docker.volume_exists(user_vol),
-                "initializing": docker.container_exists(create_container)
-                if create_container
-                else False,
+                "initializing": docker.container_exists(
+                    f"init_wallet_{current_user.username}"
+                ),
                 "ready": wallet_ready,
             },
         }
@@ -197,8 +196,7 @@ async def _setup() -> tuple[Response, int]:
                 {"status": "error", "error": "Wallet already exists."}
             ), 400
 
-        container = await docker.create_wallet(current_user.username, seed)
-        await cache.store_data(f"init_wallet_{current_user.username}", 30, container)
+        await docker.create_wallet(current_user.username, seed)
         await capture_event(current_user.username, event)
 
         current_user.wallet_created = True
