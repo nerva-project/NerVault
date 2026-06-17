@@ -100,6 +100,38 @@ watch(sessionLeft, (left) => {
   if (left === "expired") expireSession()
 })
 
+// Keep an actively-used tab's container warm instead of letting it expire and
+// rebuild: renew shortly before expiry, but only while the user is genuinely
+// here (recent interaction, tab visible). A walked-away tab still lapses and
+// gets reaped.
+const IDLE_LIMIT_MS = 5 * 60 * 1000
+const RENEW_MARGIN_MS = 60 * 1000
+const ACTIVITY_EVENTS = ["mousemove", "mousedown", "keydown", "scroll", "touchstart"] as const
+
+let lastActivity = Date.now()
+function markActive(): void {
+  lastActivity = Date.now()
+}
+
+let renewing = false
+async function maybeRenew(): Promise<void> {
+  const o = overview.value
+  if (!o?.expires_at || renewing || document.hidden) return
+  if (now.value - lastActivity > IDLE_LIMIT_MS) return
+  const ms = new Date(o.expires_at).getTime() - now.value
+  if (ms <= 0 || ms > RENEW_MARGIN_MS) return
+  renewing = true
+  try {
+    await wallet.keepAlive()
+  } catch (e) {
+    if (e instanceof ApiError && (e.code === "not_connected" || e.status === 401)) {
+      expireSession()
+    }
+  } finally {
+    renewing = false
+  }
+}
+
 async function keepAlive(): Promise<void> {
   try {
     await wallet.keepAlive()
@@ -159,11 +191,14 @@ onMounted(() => {
   void load()
   timer = setInterval(() => {
     now.value = Date.now()
+    void maybeRenew()
   }, 1000)
+  ACTIVITY_EVENTS.forEach((ev) => window.addEventListener(ev, markActive, { passive: true }))
   cardRO = new ResizeObserver(() => syncCardHeights())
 })
 onUnmounted(() => {
   if (timer) clearInterval(timer)
+  ACTIVITY_EVENTS.forEach((ev) => window.removeEventListener(ev, markActive))
   cardRO?.disconnect()
 })
 
