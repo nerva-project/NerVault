@@ -9,6 +9,7 @@ export interface WalletStatus {
   container: string | null
   volume: boolean
   initializing: boolean
+  progress: { current: number; total: number } | null
   ready: boolean
 }
 

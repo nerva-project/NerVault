@@ -1,5 +1,6 @@
 from typing import Optional, cast
 
+import re
 import sys
 import asyncio
 from secrets import token_hex
@@ -280,6 +281,39 @@ class Docker:
             return True
         except (NotFound, NullResource):
             return False
+
+    def restore_progress(self, username: str) -> Optional[dict[str, int]]:
+        """
+        Reads the seed-restore scan progress from a user's init container.
+
+        Args:
+            username (str): The username of the user.
+
+        Returns:
+            Optional[dict[str, int]]: The scanned and target block heights, or
+            None when no restore scan is in progress.
+        """
+        username = validate_username(username)
+
+        try:
+            container = self.client.containers.get(f"init_wallet_{username}")
+            raw = container.logs(tail=1).decode("utf-8", errors="ignore")
+        except (NotFound, NullResource):
+            return None
+
+        matches = re.findall(r"Height (\d+) / (\d+)", raw)
+        if not matches:
+            return None
+
+        # The tailed log chunk can slice mid-number, truncating the final
+        # match; truncation only ever shrinks a value, so the max of each
+        # group recovers the true latest height and chain tip.
+        total = max(int(t) for _, t in matches)
+        if total <= 0:
+            return None
+
+        current = min(max(int(c) for c, _ in matches), total)
+        return {"current": current, "total": total}
 
     def volume_exists(self, volume_id: str) -> bool:
         """

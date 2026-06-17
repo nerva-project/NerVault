@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from "vue"
+import { computed, onMounted, onUnmounted, ref } from "vue"
 import { useRouter } from "vue-router"
 
 import Card from "../../components/ui/Card.vue"
@@ -10,6 +10,15 @@ const wallet = useWalletStore()
 
 const steps = ["Set up", "Connect", "Sync"]
 const currentStep = ref(0)
+const progress = ref<{ current: number; total: number } | null>(null)
+
+const pct = computed(() => {
+  if (!progress.value || progress.value.total <= 0) return 0
+  return Math.min(
+    100,
+    Math.floor((progress.value.current / progress.value.total) * 100),
+  )
+})
 
 function stepState(i: number): "done" | "active" | "pending" {
   if (i < currentStep.value) return "done"
@@ -30,6 +39,8 @@ async function poll(): Promise<void> {
   try {
     const s = await wallet.fetchStatus()
     if (!s || stopped) return
+
+    progress.value = s.progress ?? null
 
     if (!s.created) {
       stop()
@@ -122,7 +133,22 @@ onUnmounted(stop)
           {{ label }}
         </span>
       </div>
-      <p class="text-muted text-[0.85rem] mt-5">This can take a moment while your wallet starts up.</p>
+      <template v-if="currentStep === 0 && progress">
+        <p class="text-muted text-[0.85rem] mt-5">
+          Restoring from your seed — scanning the blockchain. This can take a while
+          (often a few hours). You can safely leave this page and come back.
+        </p>
+        <div class="mt-4 h-3 w-full rounded-full bg-surface overflow-hidden">
+          <div
+            class="h-full rounded-full bg-accent progress-stripes transition-[width] duration-500"
+            :style="{ width: pct + '%' }"
+          ></div>
+        </div>
+        <p class="text-muted text-[0.8rem] mt-2 tabular-nums">
+          {{ progress.current.toLocaleString() }} / {{ progress.total.toLocaleString() }} blocks ({{ pct }}%)
+        </p>
+      </template>
+      <p v-else class="text-muted text-[0.85rem] mt-5">This can take a moment while your wallet starts up.</p>
     </Card>
   </section>
 </template>

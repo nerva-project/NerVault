@@ -107,6 +107,24 @@
   animation: shimmer 1.3s linear infinite;
 }
 
+/* Moving diagonal stripes over a solid fill (pair with bg-accent), used on the
+   restore progress bar to signal active work even when the percentage crawls.
+   @keyframes progress-stripes is defined below. */
+@utility progress-stripes {
+  background-image: linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.32) 25%,
+    rgba(0, 0, 0, 0.16) 25%,
+    rgba(0, 0, 0, 0.16) 50%,
+    rgba(255, 255, 255, 0.32) 50%,
+    rgba(255, 255, 255, 0.32) 75%,
+    rgba(0, 0, 0, 0.16) 75%,
+    rgba(0, 0, 0, 0.16)
+  );
+  background-size: 1.5rem 1.5rem;
+  animation: progress-stripes 1s linear infinite;
+}
+
 /* Text-input control, used raw on <input class="input"> across the auth views and
    wallet modals. A @utility (vs inline utilities) keeps the ~13 usages DRY. */
 @utility input {
@@ -245,7 +263,8 @@ body.modal-open {
 
 /* ----------------------------------------------------------------------------
    Keyframes — shimmer drives @utility skel; toast-in drives the toast entrance
-   (animate-[toast-in_…]). spin is provided by Tailwind's animate-spin.
+   (animate-[toast-in_…]); progress-stripes drives @utility progress-stripes.
+   spin is provided by Tailwind's animate-spin.
 ---------------------------------------------------------------------------- */
 @keyframes shimmer {
   to {
@@ -257,6 +276,15 @@ body.modal-open {
   from {
     opacity: 0;
     transform: translateY(8px);
+  }
+}
+
+@keyframes progress-stripes {
+  from {
+    background-position: 1.5rem 0;
+  }
+  to {
+    background-position: 0 0;
   }
 }
 
