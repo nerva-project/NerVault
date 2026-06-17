@@ -17,7 +17,7 @@ dependencies = [
     "quart-bcrypt==0.0.9",
     "redis==7.4.0",
     "password-validator==1.0",
-    "aiohttp==3.14.0",
+    "aiohttp==3.14.1",
     "docker==7.1.0",
     "pymongo==4.16.0",
     "quart-auth==0.11.0",
@@ -43,6 +43,11 @@ dev = [
     "types-docker",
     "types-qrcode",
 ]
+
+[tool.uv]
+# Security floor for cryptography (dev-only transitive via types-docker);
+# prevents a re-lock from drifting below the patched release.
+constraint-dependencies = ["cryptography>=48.0.1"]
 
 [tool.ruff]
 line-length = 85
