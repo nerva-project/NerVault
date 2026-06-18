@@ -20,6 +20,13 @@ const pct = computed(() => {
   )
 })
 
+const hints = [
+  "Preparing your wallet…",
+  "Connecting to the Nerva node…",
+  "Syncing recent blocks…",
+]
+const hint = computed(() => hints[currentStep.value] ?? "")
+
 function stepState(i: number): "done" | "active" | "pending" {
   if (i < currentStep.value) return "done"
   if (i === currentStep.value) return "active"
@@ -102,36 +109,51 @@ onUnmounted(stop)
   <section class="flex-[1_0_auto] pt-10 pb-16 w-full max-w-[520px] mx-auto flex flex-col justify-center text-center">
     <Card>
       <h1 class="text-[1.1rem] font-bold mt-2 mb-5">Loading your wallet</h1>
-      <div class="flex flex-wrap justify-center gap-2">
-        <span
-          v-for="(label, i) in steps"
-          :key="label"
-          class="inline-flex items-center gap-2 px-[0.7rem] py-[0.3rem] rounded-full text-[0.8rem] font-semibold transition-colors"
-          :class="{
-            'bg-accent/[0.14] text-accent': stepState(i) === 'done',
-            'bg-accent text-accent-contrast': stepState(i) === 'active',
-            'bg-surface text-muted': stepState(i) === 'pending',
-          }"
-        >
+      <div class="flex items-center justify-center gap-2 sm:gap-3">
+        <template v-for="(label, i) in steps" :key="label">
+          <div class="flex items-center gap-2">
+            <span
+              class="grid place-items-center size-7 rounded-full border text-[0.72rem] font-bold transition-colors"
+              :class="{
+                'bg-accent/[0.14] text-accent border-accent/40': stepState(i) === 'done',
+                'bg-accent text-accent-contrast border-accent ring-4 ring-accent/20': stepState(i) === 'active',
+                'bg-surface text-muted border-border': stepState(i) === 'pending',
+              }"
+            >
+              <span
+                v-if="stepState(i) === 'active'"
+                class="size-[13px] rounded-full border-2 border-current/30 border-t-current animate-spin"
+              ></span>
+              <svg
+                v-else-if="stepState(i) === 'done'"
+                class="size-[13px]"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+              <span v-else>{{ i + 1 }}</span>
+            </span>
+            <span
+              class="text-[0.82rem] font-semibold transition-colors"
+              :class="{
+                'text-accent': stepState(i) === 'done',
+                'text-text': stepState(i) === 'active',
+                'text-muted': stepState(i) === 'pending',
+              }"
+              >{{ label }}</span
+            >
+          </div>
           <span
-            v-if="stepState(i) === 'active'"
-            class="size-[12px] rounded-full border-2 border-current/30 border-t-current animate-spin"
+            v-if="i < steps.length - 1"
+            class="h-0.5 w-6 sm:w-10 rounded-full transition-colors"
+            :class="i < currentStep ? 'bg-accent' : 'bg-border'"
           ></span>
-          <svg
-            v-else-if="stepState(i) === 'done'"
-            class="size-[13px]"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="3"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M20 6 9 17l-5-5" />
-          </svg>
-          <span v-else class="size-[6px] rounded-full bg-current/50"></span>
-          {{ label }}
-        </span>
+        </template>
       </div>
       <template v-if="currentStep === 0 && progress">
         <p class="text-muted text-[0.85rem] mt-5">
@@ -148,7 +170,7 @@ onUnmounted(stop)
           {{ progress.current.toLocaleString() }} / {{ progress.total.toLocaleString() }} blocks ({{ pct }}%)
         </p>
       </template>
-      <p v-else class="text-muted text-[0.85rem] mt-5">This can take a moment while your wallet starts up.</p>
+      <p v-else class="text-muted text-[0.85rem] mt-5">{{ hint }}</p>
     </Card>
   </section>
 </template>
