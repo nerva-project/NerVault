@@ -203,7 +203,7 @@ async def _setup() -> tuple[Response, int]:
         await capture_event(current_user.username, event)
 
         current_user.wallet_created = True
-        await current_user.save()
+        await current_user.save(["wallet_created"])
     finally:
         await _release_wallet_lock(lock)
 
@@ -261,7 +261,14 @@ async def _connect() -> tuple[Response, int]:
         current_user.wallet_port = port
         current_user.wallet_container = container
         current_user.wallet_started_at = datetime.now(UTC)
-        await current_user.save()
+        await current_user.save(
+            [
+                "wallet_connected",
+                "wallet_port",
+                "wallet_container",
+                "wallet_started_at",
+            ]
+        )
 
         await capture_event(current_user.username, "start_wallet")
     finally:
@@ -293,7 +300,7 @@ async def _keepalive() -> tuple[Response, int]:
         ), 409
 
     current_user.wallet_started_at = datetime.now(UTC)
-    await current_user.save()
+    await current_user.save(["wallet_started_at"])
 
     expires_at = (
         current_user.wallet_started_at

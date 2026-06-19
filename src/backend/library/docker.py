@@ -58,7 +58,7 @@ class Docker:
         volume_name = self.get_user_volume(u.username)
         wallet_password = token_hex(16)
         u.wallet_password = wallet_password
-        await u.save()
+        await u.save(["wallet_password"])
 
         daemon_address = (
             f"{'https' if config.DAEMON_SSL else 'http'}://"
@@ -395,9 +395,9 @@ class Docker:
                     await asyncio.get_event_loop().run_in_executor(
                         None, self.stop_container, u.wallet_container
                     )
-                    await u.clear_wallet_data()
+                    await u.clear_wallet_data(expected_container=u.wallet_container)
                     continue
 
             if u.wallet_container and not self.container_exists(u.wallet_container):
                 print(f"Found stale data for {u}. Deleting...")
-                await u.clear_wallet_data()
+                await u.clear_wallet_data(expected_container=u.wallet_container)

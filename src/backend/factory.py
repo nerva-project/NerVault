@@ -215,7 +215,12 @@ async def create_app() -> Quart:
                 from backend.utils.models import User
 
                 user = User(username=username)
-                await user.clear_wallet_data()
+                try:
+                    await user.load()
+                except ValueError:
+                    print(f"User {username} not found")
+                    return
+                await user.clear_wallet_data(reset_password=True, reset_wallet=True)
                 print(f"Wallet data cleared for user {user.username}")
 
             asyncio.run(__reset_wallet())
@@ -244,7 +249,9 @@ async def create_app() -> Quart:
                 user.totp_secret = None
                 user.totp_enabled = False
                 user.backup_codes = []
-                await user.save()
+                await user.save(
+                    ["email_2fa", "totp_secret", "totp_enabled", "backup_codes"]
+                )
                 print(f"Two-factor authentication reset for user {user.username}")
 
             asyncio.run(__reset_2fa())

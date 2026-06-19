@@ -16,6 +16,27 @@ if TYPE_CHECKING:
 class User(AuthUser):
     collection: AsyncCollection[Any] = db.get_collection("users")
 
+    # The fields save() persists. A partial save(fields=[...]) writes only a
+    # subset so a stale or separately-loaded instance can't overwrite fields it
+    # does not own.
+    PERSISTED_FIELDS: tuple[str, ...] = (
+        "email",
+        "password",
+        "register_date",
+        "confirmed",
+        "confirmed_at",
+        "email_2fa",
+        "totp_secret",
+        "totp_enabled",
+        "backup_codes",
+        "wallet_password",
+        "wallet_created",
+        "wallet_connected",
+        "wallet_port",
+        "wallet_container",
+        "wallet_started_at",
+    )
+
     def __init__(self, username: str) -> None:
         """
         Initializes a User instance with the given username.
@@ -76,32 +97,26 @@ class User(AuthUser):
             return "email"
         return None
 
-    async def save(self) -> None:
+    async def save(self, fields: Optional[list[str]] = None) -> None:
         """
-        Saves the user data to the database. If the user does not exist, it is created.
+        Saves the user data to the database.
+
+        Args:
+            fields (Optional[list[str]]): When provided, only these fields are
+                written (a partial update), so a stale or separately-loaded
+                instance cannot overwrite fields it does not own. When None, the
+                whole document is written, creating it if missing (upsert).
         """
+        if fields is not None:
+            unknown = set(fields) - set(self.PERSISTED_FIELDS)
+            if unknown:
+                raise ValueError(f"Unknown user fields: {sorted(unknown)}")
+
+        names = list(self.PERSISTED_FIELDS) if fields is None else fields
         await User.collection.update_one(
             {"username": self.username},
-            {
-                "$set": {
-                    "email": self.email,
-                    "password": self.password,
-                    "register_date": self.register_date,
-                    "confirmed": self.confirmed,
-                    "confirmed_at": self.confirmed_at,
-                    "email_2fa": self.email_2fa,
-                    "totp_secret": self.totp_secret,
-                    "totp_enabled": self.totp_enabled,
-                    "backup_codes": self.backup_codes,
-                    "wallet_password": self.wallet_password,
-                    "wallet_created": self.wallet_created,
-                    "wallet_connected": self.wallet_connected,
-                    "wallet_port": self.wallet_port,
-                    "wallet_container": self.wallet_container,
-                    "wallet_started_at": self.wallet_started_at,
-                }
-            },
-            upsert=True,
+            {"$set": {name: getattr(self, name) for name in names}},
+            upsert=fields is None,
         )
 
     async def load(self) -> bool:
@@ -119,56 +134,67 @@ class User(AuthUser):
         if not user:
             raise ValueError("User not found")
 
-        self.email = user["email"]
-        self.password = user["password"]
-        self.register_date = user["register_date"]
-        self.confirmed = user["confirmed"]
-        self.confirmed_at = user["confirmed_at"]
+        self.email = user.get("email", "")
+        self.password = user.get("password", "")
+        self.register_date = user.get("register_date", self.register_date)
+        self.confirmed = user.get("confirmed", False)
+        self.confirmed_at = user.get("confirmed_at", self.confirmed_at)
         self.email_2fa = user.get("email_2fa", False)
         self.totp_secret = user.get("totp_secret")
         self.totp_enabled = user.get("totp_enabled", False)
         self.backup_codes = user.get("backup_codes", [])
-        self.wallet_password = user["wallet_password"]
-        self.wallet_created = user["wallet_created"]
-        self.wallet_connected = user["wallet_connected"]
-        self.wallet_port = user["wallet_port"]
-        self.wallet_container = user["wallet_container"]
-        self.wallet_started_at = user["wallet_started_at"]
+        self.wallet_password = user.get("wallet_password", "")
+        self.wallet_created = user.get("wallet_created", False)
+        self.wallet_connected = user.get("wallet_connected", False)
+        self.wallet_port = user.get("wallet_port", 0)
+        self.wallet_container = user.get("wallet_container")
+        self.wallet_started_at = user.get(
+            "wallet_started_at", self.wallet_started_at
+        )
 
         return True
 
     async def clear_wallet_data(
-        self, reset_password: bool = False, reset_wallet: bool = False
+        self,
+        reset_password: bool = False,
+        reset_wallet: bool = False,
+        expected_container: Optional[str] = None,
     ) -> None:
         """
-        Clears the wallet data of the user. Optionally resets the wallet password or wallet creation state.
+        Clears the user's live wallet session. Only the fields actually being
+        cleared are written, so unrelated data — including the wallet password
+        unless reset_password is set — is never disturbed.
 
         Args:
-            reset_password (bool): If True, resets the wallet password.
-            reset_wallet (bool): If True, resets the wallet creation state.
+            reset_password (bool): Also clear the stored wallet RPC password.
+            reset_wallet (bool): Also mark the wallet as not yet created.
+            expected_container (Optional[str]): When set, the update only applies
+                if the stored wallet_container still matches it, so a concurrent
+                writer (e.g. the reaper) can't wipe a session another request
+                just re-established.
         """
         self.wallet_connected = False
         self.wallet_port = None
         self.wallet_container = None
         self.wallet_started_at = None
+        update: dict[str, Any] = {
+            "wallet_connected": False,
+            "wallet_port": None,
+            "wallet_container": None,
+            "wallet_started_at": None,
+        }
         if reset_password:
             self.wallet_password = None
+            update["wallet_password"] = None
         if reset_wallet:
             self.wallet_created = False
+            update["wallet_created"] = False
 
-        await User.collection.update_one(
-            {"username": self.username},
-            {
-                "$set": {
-                    "wallet_connected": self.wallet_connected,
-                    "wallet_port": self.wallet_port,
-                    "wallet_container": self.wallet_container,
-                    "wallet_started_at": self.wallet_started_at,
-                    "wallet_password": self.wallet_password,
-                    "wallet_created": self.wallet_created,
-                }
-            },
-        )
+        query: dict[str, Any] = {"username": self.username}
+        if expected_container is not None:
+            query["wallet_container"] = expected_container
+
+        await User.collection.update_one(query, {"$set": update})
 
     @staticmethod
     async def get_by_email(email: str) -> User:

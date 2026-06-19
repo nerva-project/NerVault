@@ -266,7 +266,7 @@ async def _confirm(token: str) -> tuple[Response, int]:
 
     user.confirmed = True
     user.confirmed_at = datetime.datetime.now(datetime.UTC)
-    await user.save()
+    await user.save(["confirmed", "confirmed_at"])
 
     await capture_event(user.username, "confirmed")
 
@@ -472,7 +472,7 @@ async def _reset_token(token: str) -> tuple[Response, int]:
         return invalid, 400
 
     user.password = bcrypt.generate_password_hash(password).decode("utf8")
-    await user.save()
+    await user.save(["password"])
 
     await capture_event(user.username, "password_change")
 
@@ -515,7 +515,7 @@ async def _change_password() -> tuple[Response, int]:
         return jsonify({"status": "error", "error": PASSWORD_POLICY}), 400
 
     current_user.password = bcrypt.generate_password_hash(password).decode("utf8")
-    await current_user.save()
+    await current_user.save(["password"])
 
     await capture_event(current_user.username, "password_change")
 
@@ -586,7 +586,7 @@ async def _login_2fa() -> tuple[Response, int]:
                 verified = True
                 used_backup = True
                 user.backup_codes = remaining
-                await user.save()
+                await user.save(["backup_codes"])
     elif method == "email":
         stored = await cache.get_data(f"2fa:login:{user.username}")
         if stored and hmac.compare_digest(stored, code):
@@ -803,7 +803,7 @@ async def _change_email_confirm(token: str) -> tuple[Response, int]:
 
     old_email = current_user.email
     current_user.email = new_email
-    await current_user.save()
+    await current_user.save(["email"])
 
     notice = await render_template("email/email_updated.html", new_email=new_email)
     await send_email(old_email, "Email Address Changed", notice)
@@ -846,7 +846,7 @@ async def _2fa_email_enable() -> tuple[Response, int]:
         ), 400
 
     current_user.email_2fa = True
-    await current_user.save()
+    await current_user.save(["email_2fa"])
 
     await capture_event(current_user.username, "2fa_email_enabled")
 
@@ -878,7 +878,7 @@ async def _2fa_email_disable() -> tuple[Response, int]:
         ), 400
 
     current_user.email_2fa = False
-    await current_user.save()
+    await current_user.save(["email_2fa"])
 
     await capture_event(current_user.username, "2fa_email_disabled")
 
@@ -916,7 +916,7 @@ async def _2fa_totp_setup() -> tuple[Response, int]:
 
     secret = pyotp.random_base32()
     current_user.totp_secret = secret
-    await current_user.save()
+    await current_user.save(["totp_secret"])
 
     uri = pyotp.TOTP(secret).provisioning_uri(
         name=current_user.email, issuer_name=TOTP_ISSUER
@@ -968,7 +968,7 @@ async def _2fa_totp_verify() -> tuple[Response, int]:
     current_user.backup_codes = hash_codes(codes)
     current_user.totp_enabled = True
     current_user.email_2fa = False  # the authenticator app supersedes email
-    await current_user.save()
+    await current_user.save(["backup_codes", "totp_enabled", "email_2fa"])
 
     await capture_event(current_user.username, "2fa_totp_enabled")
 
@@ -1023,7 +1023,7 @@ async def _2fa_totp_disable() -> tuple[Response, int]:
     current_user.totp_enabled = False
     current_user.totp_secret = None
     current_user.backup_codes = []
-    await current_user.save()
+    await current_user.save(["totp_enabled", "totp_secret", "backup_codes"])
 
     await capture_event(current_user.username, "2fa_totp_disabled")
 
@@ -1069,7 +1069,7 @@ async def _2fa_backup_regenerate() -> tuple[Response, int]:
 
     codes = generate_backup_codes()
     current_user.backup_codes = hash_codes(codes)
-    await current_user.save()
+    await current_user.save(["backup_codes"])
 
     await capture_event(current_user.username, "2fa_backup_regenerated")
 
