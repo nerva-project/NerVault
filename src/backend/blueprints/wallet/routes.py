@@ -59,8 +59,8 @@ SPENDABLE_AGE = 10
 
 async def _account_rate_limit_key() -> str:
     """Rate-limit key based on the authenticated account, for abuse protection."""
-    if current_user.auth_id:
-        return str(current_user.auth_id).strip().lower()
+    if current_user.username:
+        return str(current_user.username).strip().lower()
 
     return client_ip()
 
@@ -415,7 +415,6 @@ async def _overview() -> tuple[Response, int]:
                 "email": current_user.email,
                 "balance": str(balance),
                 "unlocked_balance": str(unlocked_balance),
-                "transfers": transactions,
                 "sorted_transactions": sort_transactions(transfers),
                 "price": coin.get("current_price", 0),
                 "wallet_height": wallet_height,
@@ -461,13 +460,11 @@ async def _transfers() -> tuple[Response, int]:
         ), 503
 
     transfers = await wallet.get_transfers()
-    transactions = [tx for t in transfers.values() for tx in t]
 
     return jsonify(
         {
             "status": "success",
             "result": {
-                "transfers": transactions,
                 "sorted_transactions": sort_transactions(transfers),
             },
         }
