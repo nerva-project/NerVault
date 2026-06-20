@@ -377,27 +377,39 @@ class Docker:
         """
         users = await User.get_all()
         async for u in users:
-            u = User(username=u["username"])
-            await u.load()
+            username = str(u["username"])
+            # Isolate each user: one failure (e.g. a stuck stop_container) must
+            # not abort the whole batch, and a failed stop must not clear the DB
+            # (which would orphan the still-running container).
+            try:
+                u = User(username=username)
+                await u.load()
 
-            if u.wallet_started_at:
-                session_lifetime: int = config.PERMANENT_SESSION_LIFETIME
-                wallet_started: datetime = u.wallet_started_at
-                if wallet_started.tzinfo is None:
-                    wallet_started = wallet_started.replace(tzinfo=UTC)
-                expiration_time: datetime = wallet_started + timedelta(
-                    seconds=session_lifetime
-                )
-                now: datetime = datetime.now(UTC)
-                time_diff: timedelta = expiration_time - now
-                if time_diff.total_seconds() <= 0:
-                    print(f"Found expired container for {u}. Killing...")
-                    await asyncio.get_event_loop().run_in_executor(
-                        None, self.stop_container, u.wallet_container
+                if u.wallet_started_at:
+                    session_lifetime: int = config.PERMANENT_SESSION_LIFETIME
+                    wallet_started: datetime = u.wallet_started_at
+                    if wallet_started.tzinfo is None:
+                        wallet_started = wallet_started.replace(tzinfo=UTC)
+                    expiration_time: datetime = wallet_started + timedelta(
+                        seconds=session_lifetime
                     )
-                    await u.clear_wallet_data(expected_container=u.wallet_container)
-                    continue
+                    now: datetime = datetime.now(UTC)
+                    time_diff: timedelta = expiration_time - now
+                    if time_diff.total_seconds() <= 0:
+                        print(f"Found expired container for {u}. Killing...")
+                        await asyncio.get_event_loop().run_in_executor(
+                            None, self.stop_container, u.wallet_container
+                        )
+                        await u.clear_wallet_data(
+                            expected_container=u.wallet_container
+                        )
+                        continue
 
-            if u.wallet_container and not self.container_exists(u.wallet_container):
-                print(f"Found stale data for {u}. Deleting...")
-                await u.clear_wallet_data(expected_container=u.wallet_container)
+                if u.wallet_container and not self.container_exists(
+                    u.wallet_container
+                ):
+                    print(f"Found stale data for {u}. Deleting...")
+                    await u.clear_wallet_data(expected_container=u.wallet_container)
+            except Exception as e:
+                print(f"Cleanup failed for {username}: {e}")
+                continue
