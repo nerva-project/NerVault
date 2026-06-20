@@ -99,9 +99,9 @@ def sort_transactions(transactions: Dict[str, Any]) -> Dict[str, Dict[str, Any]]
 
         sorted_txs[tx_id] = {
             "type": tx_data["type"],
-            "amount": tx_data["amount"],
+            "amount": str(tx_data["amount"]),
             "timestamp": tx_data["timestamp"],
-            "total": total,
+            "total": str(total),
         }
 
     return sorted_txs

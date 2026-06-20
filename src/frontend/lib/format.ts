@@ -1,9 +1,10 @@
 const DECIMALS = 12
 
-export function fromAtomic(atomic: number | string): string {
-  const value = BigInt(
-    typeof atomic === "number" ? Math.trunc(atomic) : atomic || "0",
-  )
+export function fromAtomic(atomic: number | string | bigint): string {
+  const value =
+    typeof atomic === "bigint"
+      ? atomic
+      : BigInt(typeof atomic === "number" ? Math.trunc(atomic) : atomic || "0")
   const negative = value < 0n
   const abs = negative ? -value : value
   const base = 10n ** BigInt(DECIMALS)

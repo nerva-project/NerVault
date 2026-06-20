@@ -45,8 +45,9 @@ const fiat = computed(() => {
 
 const locked = computed(() => {
   const o = overview.value
-  if (!o) return 0
-  return Math.max(0, o.balance - o.unlocked_balance)
+  if (!o) return 0n
+  const diff = BigInt(o.balance) - BigInt(o.unlocked_balance)
+  return diff > 0n ? diff : 0n
 })
 
 const balanceLine1 = computed(() => {
@@ -54,13 +55,13 @@ const balanceLine1 = computed(() => {
   if (!o) return ""
   const parts: string[] = []
   if (fiat.value) parts.push(`≈ ${fiat.value}`)
-  if (locked.value > 0) parts.push(`${fromAtomic(o.unlocked_balance)} unlocked`)
+  if (locked.value > 0n) parts.push(`${fromAtomic(o.unlocked_balance)} unlocked`)
   return parts.join(" · ")
 })
 
 const lockedLine = computed(() => {
   const o = overview.value
-  if (!o || locked.value <= 0) return ""
+  if (!o || locked.value <= 0n) return ""
   const n = o.blocks_to_unlock
   const suffix =
     n > 0 ? ` · unlocks in ~${n} ${n === 1 ? "block" : "blocks"}` : ""
@@ -303,13 +304,13 @@ const sendPass = ref("")
 const hasTwoFactor = computed(() => !!auth.user?.two_factor?.method)
 const prepared = ref<{
   prepare_id: string
-  amount: number
-  fee: number
+  amount: string
+  fee: string
   address: string
 } | null>(null)
 const sweepToggleDisabled = computed(() => !sendAddr.value.trim())
 
-const unlockedBalance = computed(() => wallet.overview?.unlocked_balance ?? 0)
+const unlockedBalance = computed(() => wallet.overview?.unlocked_balance ?? "0")
 
 const amountExceeds = computed(() => {
   if (sendSweep.value) return false
@@ -361,8 +362,8 @@ async function review(): Promise<void> {
   try {
     const res = await api.post<{
       prepare_id: string
-      amount: number
-      fee: number
+      amount: string
+      fee: string
     }>("/wallet/transfer/prepare", {
       address: sendAddr.value.trim(),
       sweep: sendSweep.value,
@@ -753,7 +754,7 @@ async function remove(): Promise<void> {
         </div>
         <div class="flex justify-between gap-4 border-t border-border-soft pt-3 font-semibold">
           <span>Total</span>
-          <span>{{ prepared ? fromAtomic(prepared.amount + prepared.fee) : "—" }} XNV</span>
+          <span>{{ prepared ? fromAtomic(BigInt(prepared.amount) + BigInt(prepared.fee)) : "—" }} XNV</span>
         </div>
       </div>
       <TwoFactorField v-model="sendCode" />

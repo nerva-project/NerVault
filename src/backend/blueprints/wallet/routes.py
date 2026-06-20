@@ -413,8 +413,8 @@ async def _overview() -> tuple[Response, int]:
             "result": {
                 "address": address,
                 "email": current_user.email,
-                "balance": balance,
-                "unlocked_balance": unlocked_balance,
+                "balance": str(balance),
+                "unlocked_balance": str(unlocked_balance),
                 "transfers": transactions,
                 "sorted_transactions": sort_transactions(transfers),
                 "price": coin.get("current_price", 0),
@@ -768,8 +768,8 @@ async def _transfer_prepare() -> tuple[Response, int]:
             "status": "success",
             "result": {
                 "prepare_id": prepare_id,
-                "amount": prepared["amount"],
-                "fee": prepared["fee"],
+                "amount": str(prepared["amount"]),
+                "fee": str(prepared["fee"]),
             },
         }
     ), 200

@@ -15,16 +15,16 @@ export interface WalletStatus {
 
 export interface SortedTx {
   type: string
-  amount: number
+  amount: string
   timestamp: number
-  total: number
+  total: string
 }
 
 export interface WalletOverview {
   address: string
   email: string
-  balance: number
-  unlocked_balance: number
+  balance: string
+  unlocked_balance: string
   sorted_transactions: Record<string, SortedTx>
   price: number
   wallet_height: number
