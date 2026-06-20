@@ -7,6 +7,7 @@ from io import BytesIO
 from asyncio import sleep
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
+from secrets import token_hex
 from datetime import UTC, datetime, timedelta
 
 from PIL import Image
@@ -556,6 +557,7 @@ async def _transfer() -> tuple[Response, int]:
     data = await request.get_json(silent=True) or {}
     code = str(data.get("code") or "")
     password = str(data.get("password") or "")
+    prepare_id = str(data.get("prepare_id") or "")
 
     wallet = _wallet_rpc(timeout=30)
 
@@ -580,6 +582,16 @@ async def _transfer() -> tuple[Response, int]:
             }
         ), 409
 
+    cached = json.loads(raw)
+    if not prepare_id or prepare_id != cached.get("id"):
+        return jsonify(
+            {
+                "status": "error",
+                "error": "Your transaction preview changed. Please review again.",
+                "code": "expired",
+            }
+        ), 409
+
     if not await verify_step_up(current_user, code, password):
         return jsonify(
             {
@@ -590,7 +602,7 @@ async def _transfer() -> tuple[Response, int]:
         ), 401
 
     try:
-        hashes = await wallet.relay(json.loads(raw))
+        hashes = await wallet.relay(cached["metadata"])
     except Exception:
         await cache.redis.delete(cache_key)
         await capture_event(current_user.username, "tx_fail_relay")
@@ -732,14 +744,29 @@ async def _transfer_prepare() -> tuple[Response, int]:
             }
         ), 400
 
+    prepare_id = token_hex(16)
     await cache.store_data(
-        f"tx_prepared_{current_user.username}", 5, json.dumps(prepared["metadata"])
+        f"tx_prepared_{current_user.username}",
+        5,
+        json.dumps(
+            {
+                "id": prepare_id,
+                "metadata": prepared["metadata"],
+                "address": address,
+                "amount": prepared["amount"],
+                "fee": prepared["fee"],
+            }
+        ),
     )
 
     return jsonify(
         {
             "status": "success",
-            "result": {"amount": prepared["amount"], "fee": prepared["fee"]},
+            "result": {
+                "prepare_id": prepare_id,
+                "amount": prepared["amount"],
+                "fee": prepared["fee"],
+            },
         }
     ), 200
 

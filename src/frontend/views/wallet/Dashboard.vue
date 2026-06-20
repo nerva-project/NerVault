@@ -301,7 +301,12 @@ const confirmErr = ref("")
 const sendCode = ref("")
 const sendPass = ref("")
 const hasTwoFactor = computed(() => !!auth.user?.two_factor?.method)
-const prepared = ref<{ amount: number; fee: number } | null>(null)
+const prepared = ref<{
+  prepare_id: string
+  amount: number
+  fee: number
+  address: string
+} | null>(null)
 const sweepToggleDisabled = computed(() => !sendAddr.value.trim())
 
 const unlockedBalance = computed(() => wallet.overview?.unlocked_balance ?? 0)
@@ -354,16 +359,19 @@ async function review(): Promise<void> {
   sendErr.value = ""
   reviewing.value = true
   try {
-    const res = await api.post<{ amount: number; fee: number }>(
-      "/wallet/transfer/prepare",
-      {
-        address: sendAddr.value.trim(),
-        sweep: sendSweep.value,
-        amount: sendSweep.value ? undefined : sendAmount.value.trim(),
-        payment_id: sendPid.value.trim() || undefined,
-      },
-    )
-    prepared.value = res.result ?? null
+    const res = await api.post<{
+      prepare_id: string
+      amount: number
+      fee: number
+    }>("/wallet/transfer/prepare", {
+      address: sendAddr.value.trim(),
+      sweep: sendSweep.value,
+      amount: sendSweep.value ? undefined : sendAmount.value.trim(),
+      payment_id: sendPid.value.trim() || undefined,
+    })
+    prepared.value = res.result
+      ? { ...res.result, address: sendAddr.value.trim() }
+      : null
     if (!prepared.value) {
       sendErr.value = "Could not prepare the transaction."
       return
@@ -409,6 +417,7 @@ async function confirmSend(): Promise<void> {
   sending.value = true
   try {
     const res = await api.post("/wallet/transfer", {
+      prepare_id: prepared.value?.prepare_id,
       code: sendCode.value,
       password: sendPass.value,
     })
@@ -732,7 +741,7 @@ async function remove(): Promise<void> {
       <div class="flex flex-col gap-3 mb-5">
         <div>
           <div class="text-text-dim text-[0.8rem] mb-1">To</div>
-          <CopyField :value="sendAddr.trim()" wrap />
+          <CopyField :value="prepared?.address ?? ''" wrap />
         </div>
         <div class="flex justify-between gap-4 border-t border-border-soft pt-3 text-[0.95rem]">
           <span class="text-text-dim">{{ sendSweep ? "Amount (send all)" : "Amount" }}</span>
