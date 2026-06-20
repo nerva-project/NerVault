@@ -117,12 +117,15 @@ class Docker:
                 "version",
             ]
 
-        if not self.volume_exists(volume_name):
-            self.client.volumes.create(name=volume_name, driver="local")
+        if not await self.volume_exists(volume_name):
+            await asyncio.to_thread(
+                self.client.volumes.create, name=volume_name, driver="local"
+            )
 
         container_name = f"init_wallet_{u.username}"
         try:
-            container = self.client.containers.run(
+            container = await asyncio.to_thread(
+                self.client.containers.run,
                 self.nerva_docker_img,
                 entrypoint=entrypoint,
                 auto_remove=True,
@@ -137,7 +140,9 @@ class Docker:
 
         except APIError as e:
             if str(e).startswith("409"):
-                container = self.client.containers.get(container_name)
+                container = await asyncio.to_thread(
+                    self.client.containers.get, container_name
+                )
                 return container.short_id
             raise
 
@@ -203,7 +208,8 @@ class Docker:
             }
         )
         try:
-            container = self.client.containers.run(
+            container = await asyncio.to_thread(
+                self.client.containers.run,
                 self.nerva_docker_img,
                 entrypoint=entrypoint,
                 auto_remove=True,
@@ -219,11 +225,13 @@ class Docker:
 
         except APIError as e:
             if str(e).startswith("409"):
-                container = self.client.containers.get(container_name)
+                container = await asyncio.to_thread(
+                    self.client.containers.get, container_name
+                )
                 return container.short_id
             raise
 
-    def get_port(self, container_id: str) -> int:
+    async def get_port(self, container_id: str) -> int:
         """
         Fetches the host port mapped to a given container.
 
@@ -234,7 +242,9 @@ class Docker:
             int: The mapped host port.
         """
         client = APIClient()
-        port_data = client.port(container_id, self.listen_port)
+        port_data = await asyncio.to_thread(
+            client.port, container_id, self.listen_port
+        )
         host_port = port_data[0]["HostPort"]
         return int(host_port)
 
@@ -252,7 +262,7 @@ class Docker:
             return f"rpc_wallet_{username}"
         return "127.0.0.1"
 
-    def rpc_port(self, container_id: str) -> int:
+    async def rpc_port(self, container_id: str) -> int:
         """
         Returns the port the app should use to reach a wallet RPC.
 
@@ -264,9 +274,9 @@ class Docker:
         """
         if self.wallet_network:
             return self.listen_port
-        return self.get_port(container_id)
+        return await self.get_port(container_id)
 
-    def container_exists(self, container_id: str) -> bool:
+    async def container_exists(self, container_id: str) -> bool:
         """
         Checks if a container exists.
 
@@ -277,12 +287,12 @@ class Docker:
             bool: True if the container exists, False otherwise.
         """
         try:
-            self.client.containers.get(container_id)
+            await asyncio.to_thread(self.client.containers.get, container_id)
             return True
         except (NotFound, NullResource):
             return False
 
-    def restore_progress(self, username: str) -> Optional[dict[str, int]]:
+    async def restore_progress(self, username: str) -> Optional[dict[str, int]]:
         """
         Reads the seed-restore scan progress from a user's init container.
 
@@ -296,8 +306,12 @@ class Docker:
         username = validate_username(username)
 
         try:
-            container = self.client.containers.get(f"init_wallet_{username}")
-            raw = container.logs(tail=1).decode("utf-8", errors="ignore")
+            container = await asyncio.to_thread(
+                self.client.containers.get, f"init_wallet_{username}"
+            )
+            raw = (await asyncio.to_thread(container.logs, tail=1)).decode(
+                "utf-8", errors="ignore"
+            )
         except (NotFound, NullResource):
             return None
 
@@ -315,7 +329,7 @@ class Docker:
         current = min(max(int(c) for c, _ in matches), total)
         return {"current": current, "total": total}
 
-    def volume_exists(self, volume_id: str) -> bool:
+    async def volume_exists(self, volume_id: str) -> bool:
         """
         Checks if a volume exists.
 
@@ -326,23 +340,25 @@ class Docker:
             bool: True if the volume exists, False otherwise.
         """
         try:
-            self.client.volumes.get(volume_id)
+            await asyncio.to_thread(self.client.volumes.get, volume_id)
             return True
         except (NotFound, NullResource):
             return False
 
-    def stop_container(self, container_id: Optional[str]) -> None:
+    async def stop_container(self, container_id: Optional[str]) -> None:
         """
         Stops a running container.
 
         Args:
             container_id (str): The ID of the container.
         """
-        if container_id and self.container_exists(container_id):
-            c: Container = self.client.containers.get(container_id)
-            c.stop()
+        if container_id and await self.container_exists(container_id):
+            c: Container = await asyncio.to_thread(
+                self.client.containers.get, container_id
+            )
+            await asyncio.to_thread(c.stop)
 
-    def delete_wallet_data(self, user_id: str) -> bool:
+    async def delete_wallet_data(self, user_id: str) -> bool:
         """
         Deletes wallet data associated with a user.
 
@@ -353,8 +369,10 @@ class Docker:
             bool: True if the operation is successful, False otherwise.
         """
         volume_name = self.get_user_volume(user_id)
-        volume: Volume = self.client.volumes.get(volume_name)
-        volume.remove()
+        volume: Volume = await asyncio.to_thread(
+            self.client.volumes.get, volume_name
+        )
+        await asyncio.to_thread(volume.remove)
         return True
 
     @staticmethod
@@ -397,15 +415,13 @@ class Docker:
                     time_diff: timedelta = expiration_time - now
                     if time_diff.total_seconds() <= 0:
                         print(f"Found expired container for {u}. Killing...")
-                        await asyncio.get_event_loop().run_in_executor(
-                            None, self.stop_container, u.wallet_container
-                        )
+                        await self.stop_container(u.wallet_container)
                         await u.clear_wallet_data(
                             expected_container=u.wallet_container
                         )
                         continue
 
-                if u.wallet_container and not self.container_exists(
+                if u.wallet_container and not await self.container_exists(
                     u.wallet_container
                 ):
                     print(f"Found stale data for {u}. Deleting...")

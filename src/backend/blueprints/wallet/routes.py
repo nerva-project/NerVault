@@ -126,9 +126,13 @@ async def _status() -> tuple[Response, int]:
     Returns the current state of the user's wallet (created/connected/ready).
     """
     user_vol = docker.get_user_volume(current_user.username)
-    initializing = docker.container_exists(f"init_wallet_{current_user.username}")
+    initializing = await docker.container_exists(
+        f"init_wallet_{current_user.username}"
+    )
     progress = (
-        docker.restore_progress(current_user.username) if initializing else None
+        await docker.restore_progress(current_user.username)
+        if initializing
+        else None
     )
 
     if current_user.wallet_created and current_user.wallet_connected:
@@ -144,7 +148,7 @@ async def _status() -> tuple[Response, int]:
                 "connected": current_user.wallet_connected,
                 "port": current_user.wallet_port,
                 "container": current_user.wallet_container,
-                "volume": docker.volume_exists(user_vol),
+                "volume": await docker.volume_exists(user_vol),
                 "initializing": initializing,
                 "progress": progress,
                 "ready": wallet_ready,
@@ -256,13 +260,13 @@ async def _connect() -> tuple[Response, int]:
         container = await docker.start_wallet(current_user.username)
 
         try:
-            port = docker.rpc_port(container)
+            port = await docker.rpc_port(container)
         except TypeError:
             return jsonify(
                 {"status": "error", "error": "Failed to connect wallet."}
             ), 500
 
-        current_user.wallet_connected = docker.container_exists(container)
+        current_user.wallet_connected = await docker.container_exists(container)
         current_user.wallet_port = port
         current_user.wallet_container = container
         current_user.wallet_started_at = datetime.now(UTC)
@@ -294,7 +298,7 @@ async def _keepalive() -> tuple[Response, int]:
     if (
         not current_user.wallet_connected
         or not current_user.wallet_container
-        or not docker.container_exists(current_user.wallet_container)
+        or not await docker.container_exists(current_user.wallet_container)
     ):
         return jsonify(
             {
@@ -337,7 +341,7 @@ async def _overview() -> tuple[Response, int]:
             }
         ), 409
 
-    if not current_user.wallet_container or not docker.container_exists(
+    if not current_user.wallet_container or not await docker.container_exists(
         current_user.wallet_container
     ):
         await current_user.clear_wallet_data()
@@ -479,7 +483,7 @@ async def _qr() -> Response:
     """
     wallet = _wallet_rpc()
 
-    if not current_user.wallet_container or not docker.container_exists(
+    if not current_user.wallet_container or not await docker.container_exists(
         current_user.wallet_container
     ):
         return Response(status=409)
@@ -842,12 +846,12 @@ async def _delete() -> tuple[Response, int]:
         ), 409
 
     try:
-        docker.stop_container(current_user.wallet_container)
+        await docker.stop_container(current_user.wallet_container)
         await capture_event(current_user.username, "stop_container")
 
         await sleep(2)
 
-        docker.delete_wallet_data(current_user.username)
+        await docker.delete_wallet_data(current_user.username)
         await capture_event(current_user.username, "delete_wallet")
 
         await current_user.clear_wallet_data(reset_password=True, reset_wallet=True)

@@ -379,7 +379,7 @@ async def _logout() -> tuple[Response, int]:
     """
     Logs the user out, stops their wallet container, and clears wallet data.
     """
-    docker.stop_container(current_user.wallet_container)
+    await docker.stop_container(current_user.wallet_container)
     await capture_event(current_user.username, "stop_container")
     await current_user.clear_wallet_data(
         expected_container=current_user.wallet_container
