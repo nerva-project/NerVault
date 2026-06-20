@@ -7,6 +7,7 @@ import secrets
 import datetime
 from io import BytesIO
 from datetime import timedelta
+from urllib.parse import quote
 
 import pyotp
 import aiohttp
@@ -197,7 +198,7 @@ async def _register() -> tuple[Response, int]:
             timeout=aiohttp.ClientTimeout(total=5)
         ) as session:
             async with session.get(
-                f"https://block-temporary-email.com/check/email/{email}",
+                f"https://block-temporary-email.com/check/email/{quote(email, safe='')}",
                 headers={
                     "x-api-key": str(
                         current_app.config.get("TEMP_MAIL_BLOCK_API_KEY", "")
@@ -730,7 +731,7 @@ async def _change_email() -> tuple[Response, int]:
             timeout=aiohttp.ClientTimeout(total=5)
         ) as session:
             async with session.get(
-                f"https://block-temporary-email.com/check/email/{new_email}",
+                f"https://block-temporary-email.com/check/email/{quote(new_email, safe='')}",
                 headers={
                     "x-api-key": str(
                         current_app.config.get("TEMP_MAIL_BLOCK_API_KEY", "")
