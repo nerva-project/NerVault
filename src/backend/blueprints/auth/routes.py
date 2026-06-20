@@ -938,8 +938,7 @@ async def _2fa_totp_setup() -> tuple[Response, int]:
         ), 400
 
     secret = pyotp.random_base32()
-    current_user.totp_secret = secret
-    await current_user.save(["totp_secret"])
+    await cache.store_data(f"2fa:totp:setup:{current_user.username}", 10, secret)
 
     uri = pyotp.TOTP(secret).provisioning_uri(
         name=current_user.email, issuer_name=TOTP_ISSUER
@@ -970,7 +969,8 @@ async def _2fa_totp_verify() -> tuple[Response, int]:
     data = await request.get_json(silent=True) or {}
     code = str(data.get("code") or "").strip()
 
-    if not current_user.totp_secret:
+    secret = await cache.get_data(f"2fa:totp:setup:{current_user.username}")
+    if not secret:
         return jsonify(
             {"status": "error", "error": "Start the authenticator setup first."}
         ), 400
@@ -980,18 +980,20 @@ async def _2fa_totp_verify() -> tuple[Response, int]:
             {"status": "error", "error": "The authenticator app is already enabled."}
         ), 400
 
-    if not pyotp.TOTP(current_user.totp_secret).verify(
-        code, valid_window=TOTP_VALID_WINDOW
-    ):
+    if not pyotp.TOTP(secret).verify(code, valid_window=TOTP_VALID_WINDOW):
         return jsonify(
             {"status": "error", "error": "That code is incorrect. Please try again."}
         ), 400
 
     codes = generate_backup_codes()
+    current_user.totp_secret = secret
     current_user.backup_codes = hash_codes(codes)
     current_user.totp_enabled = True
     current_user.email_2fa = False  # the authenticator app supersedes email
-    await current_user.save(["backup_codes", "totp_enabled", "email_2fa"])
+    await current_user.save(
+        ["totp_secret", "backup_codes", "totp_enabled", "email_2fa"]
+    )
+    await cache.redis.delete(f"2fa:totp:setup:{current_user.username}")
 
     await capture_event(current_user.username, "2fa_totp_enabled")
 
