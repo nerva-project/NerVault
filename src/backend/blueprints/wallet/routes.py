@@ -792,15 +792,28 @@ async def _delete() -> tuple[Response, int]:
             {"status": "error", "error": "Please confirm deletion of the wallet."}
         ), 400
 
-    docker.stop_container(current_user.wallet_container)
-    await capture_event(current_user.username, "stop_container")
+    lock = await _acquire_wallet_lock(current_user.username)
+    if lock is None:
+        return jsonify(
+            {
+                "status": "error",
+                "error": "A wallet operation is already in progress.",
+                "code": "in_progress",
+            }
+        ), 409
 
-    await sleep(2)
+    try:
+        docker.stop_container(current_user.wallet_container)
+        await capture_event(current_user.username, "stop_container")
 
-    docker.delete_wallet_data(current_user.username)
-    await capture_event(current_user.username, "delete_wallet")
+        await sleep(2)
 
-    await current_user.clear_wallet_data(reset_password=True, reset_wallet=True)
+        docker.delete_wallet_data(current_user.username)
+        await capture_event(current_user.username, "delete_wallet")
+
+        await current_user.clear_wallet_data(reset_password=True, reset_wallet=True)
+    finally:
+        await _release_wallet_lock(lock)
 
     return jsonify(
         {"status": "success", "message": "Successfully deleted wallet data."}
