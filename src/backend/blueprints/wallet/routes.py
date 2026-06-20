@@ -26,7 +26,7 @@ from backend import config
 from backend.factory import cache, bcrypt, daemon, docker
 from backend.library.rpc import Wallet
 from backend.utils.models import User
-from backend.library.utils import to_atomic, sort_transactions
+from backend.library.utils import client_ip, to_atomic, sort_transactions
 from backend.library.helpers import (
     capture_event,
     verify_step_up,
@@ -62,7 +62,7 @@ async def _account_rate_limit_key() -> str:
     if current_user.auth_id:
         return str(current_user.auth_id).strip().lower()
 
-    return request.headers.get("CF-Connecting-IP") or request.access_route[0]
+    return client_ip()
 
 
 async def _acquire_wallet_lock(username: str) -> Lock | None:

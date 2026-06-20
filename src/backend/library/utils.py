@@ -2,7 +2,26 @@ from typing import Any, Dict
 
 from decimal import Decimal
 
+from quart import request
+
+from backend import config
+
 PICO_XNV = Decimal("0.000000000001")
+
+
+def client_ip() -> str:
+    """
+    Returns the originating client IP for rate limiting. Behind a trusted proxy
+    (TRUST_PROXY_IP_HEADER, default True) the proxy-set CF-Connecting-IP header
+    is used; otherwise the unspoofable socket peer is used, so the header cannot
+    be forged to dodge rate limits when the origin is directly reachable.
+    """
+    if getattr(config, "TRUST_PROXY_IP_HEADER", True):
+        forwarded = request.headers.get("CF-Connecting-IP")
+        if forwarded:
+            return forwarded
+
+    return request.remote_addr or "unknown"
 
 
 def to_atomic(amount: Decimal) -> int:

@@ -49,6 +49,14 @@ COINGECKO_API_KEY = "coingecko_api_key"
 # TEMP MAIL BLOCK
 TEMP_MAIL_BLOCK_API_KEY = "temp_mail_block_api_key"
 
+# Networking
+# Trust the proxy-set CF-Connecting-IP header for the client IP used in rate
+# limiting. Keep this True only when the origin is reachable solely through the
+# trusted proxy (e.g. firewall-locked to Cloudflare's IP ranges); otherwise a
+# client could forge the header to bypass rate limits. Set False for a directly
+# reachable origin to use the real socket peer instead.
+TRUST_PROXY_IP_HEADER = True
+
 # Development
 DEBUG = False
 TEMPLATES_AUTO_RELOAD = False

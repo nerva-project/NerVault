@@ -19,6 +19,7 @@ from quart_rate_limiter.redis_store import RedisStore
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
 
 from backend.utils.csrf import init_csrf
+from backend.library.utils import client_ip
 
 if TYPE_CHECKING:
     from backend.library.cache import Cache
@@ -34,7 +35,7 @@ schema: PasswordValidator
 
 
 async def _rate_limit_key() -> str:
-    return request.headers.get("CF-Connecting-IP") or request.access_route[0]
+    return client_ip()
 
 
 async def create_app() -> Quart:

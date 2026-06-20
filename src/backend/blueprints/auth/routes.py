@@ -36,6 +36,7 @@ from backend.utils.tokens import (
     validate_token,
     password_fingerprint,
 )
+from backend.library.utils import client_ip
 from backend.library.helpers import capture_event, verify_2fa_code
 from backend.utils.decorators import check_confirmed
 from backend.library.validation import is_valid_username
@@ -82,7 +83,7 @@ async def _account_rate_limit_key() -> str:
     if identifier:
         return str(identifier).strip().lower()
 
-    return request.headers.get("CF-Connecting-IP") or request.access_route[0]
+    return client_ip()
 
 
 async def _skip_safe_methods() -> bool:
@@ -100,7 +101,7 @@ async def _login_2fa_rate_limit_key() -> str:
     if isinstance(payload, list) and payload:
         return str(payload[0]).strip().lower()
 
-    return request.headers.get("CF-Connecting-IP") or request.access_route[0]
+    return client_ip()
 
 
 def _user_dict(user: User) -> dict[str, Any]:
