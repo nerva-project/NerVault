@@ -391,6 +391,7 @@ async function review(): Promise<void> {
 }
 
 function backToReview(): void {
+  if (sending.value) return
   confirmOpen.value = false
   confirmErr.value = ""
   sendOpen.value = true
@@ -414,6 +415,7 @@ function generatePaymentId(): void {
 }
 
 async function confirmSend(): Promise<void> {
+  if (sending.value) return
   confirmErr.value = ""
   sending.value = true
   try {
@@ -473,6 +475,7 @@ function closeSecrets(): void {
 }
 
 async function reveal(): Promise<void> {
+  if (secretLoading.value) return
   secretErr.value = ""
   secretLoading.value = true
   try {
@@ -485,6 +488,8 @@ async function reveal(): Promise<void> {
     secretErr.value = e instanceof ApiError ? e.message : "Could not reveal secrets."
   } finally {
     secretLoading.value = false
+    secretPass.value = ""
+    secretCode.value = ""
   }
 }
 
