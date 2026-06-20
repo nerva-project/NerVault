@@ -173,12 +173,12 @@ async def create_app() -> Quart:
         async def _start_cleanup_loop() -> None:
             async def _cleanup_loop() -> None:
                 while True:
-                    await asyncio.sleep(3600)
                     try:
                         await docker.cleanup()
                         app.logger.info("Cleaned up expired wallet containers")
                     except Exception:
                         app.logger.exception("Failed to clean up wallet containers")
+                    await asyncio.sleep(3600)
 
             app.add_background_task(_cleanup_loop)
 
