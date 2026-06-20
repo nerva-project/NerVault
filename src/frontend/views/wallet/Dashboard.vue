@@ -317,8 +317,14 @@ const amountExceeds = computed(() => {
   }
 })
 
+const pidValid = computed(() => {
+  const p = sendPid.value.trim().toLowerCase()
+  return p === "" || /^[0-9a-f]{16}$/.test(p)
+})
+
 const canReview = computed(() => {
   if (reviewing.value || !sendAddr.value.trim()) return false
+  if (!pidValid.value) return false
   if (sendSweep.value) return true
   const a = sendAmount.value.trim()
   return !!a && a !== "." && !amountExceeds.value
@@ -711,6 +717,9 @@ async function remove(): Promise<void> {
             <input id="sp" class="input flex-1" v-model="sendPid" autocomplete="off" />
             <Btn variant="ghost" @click="generatePaymentId">Generate</Btn>
           </div>
+          <p v-if="!pidValid" class="mt-2 text-[0.8rem] text-danger">
+            Payment ID must be 16 hexadecimal characters.
+          </p>
         </FormField>
         <Btn type="submit" variant="primary" block :disabled="!canReview">
           {{ reviewing ? "Reviewing…" : "Review transaction" }}

@@ -248,6 +248,9 @@ class Wallet:
         Returns:
             Dict[str, Any]: {"amount": int, "fee": int, "metadata": list[str]}.
         """
+        if payment_id and not await self.is_integrated(dest_address):
+            dest_address = await self.integrated_address(dest_address, payment_id)
+
         if sweep:
             res = (
                 await self.rpc.sweep_all(
@@ -270,9 +273,6 @@ class Wallet:
                 "fee": sum(res.get("fee_list") or []),
                 "metadata": res.get("tx_metadata_list") or [],
             }
-
-        if payment_id and not await self.is_integrated(dest_address):
-            dest_address = await self.integrated_address(dest_address, payment_id)
 
         res = (
             await self.rpc.transfer(

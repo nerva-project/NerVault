@@ -658,6 +658,26 @@ async def _transfer_prepare() -> tuple[Response, int]:
             {"status": "error", "error": "Invalid Nerva address provided."}
         ), 400
 
+    if payment_id is not None:
+        if len(payment_id) != 16 or not all(
+            c in string.hexdigits for c in payment_id
+        ):
+            return jsonify(
+                {
+                    "status": "error",
+                    "error": "Payment ID must be 16 hexadecimal characters.",
+                }
+            ), 400
+
+        if await wallet.is_integrated(address):
+            return jsonify(
+                {
+                    "status": "error",
+                    "error": "This address already includes a payment ID; "
+                    "remove the payment ID field.",
+                }
+            ), 400
+
     amount: int | None = None
     if not sweep:
         try:
@@ -688,14 +708,6 @@ async def _transfer_prepare() -> tuple[Response, int]:
         except (InvalidOperation, ValueError):
             return jsonify(
                 {"status": "error", "error": "Invalid Nerva amount specified."}
-            ), 400
-
-        if payment_id and (
-            len(payment_id) not in [16, 32]
-            or not all(c in string.hexdigits for c in payment_id)
-        ):
-            return jsonify(
-                {"status": "error", "error": "Invalid payment ID specified."}
             ), 400
 
     try:
