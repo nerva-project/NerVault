@@ -69,7 +69,13 @@ async def verify_2fa_code(user: User, code: str) -> bool:
     if method == "totp" and user.totp_secret:
         import pyotp
 
-        return pyotp.TOTP(user.totp_secret).verify(code, valid_window=1)
+        if not pyotp.TOTP(user.totp_secret).verify(code, valid_window=1):
+            return False
+
+        # One code authorizes one sensitive action: reject reuse within the
+        # validity window. SET NX is atomic, so it also blocks concurrent reuse.
+        used_key = f"2fa:totp:used:{user.username}:{code}"
+        return bool(await cache.redis.set(used_key, 1, ex=90, nx=True))
 
     if method == "email":
         stored = await cache.get_data(f"2fa:stepup:{user.username}")
