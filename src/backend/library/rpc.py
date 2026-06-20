@@ -308,9 +308,21 @@ class Wallet:
             list[str]: The broadcast transaction hashes.
         """
         hashes: list[str] = []
+        errors: list[Exception] = []
         for blob in metadata:
-            res = (await self.rpc.relay_tx(tx_hex=blob))["result"]
+            try:
+                res = (await self.rpc.relay_tx(tx_hex=blob))["result"]
+            except Exception as e:
+                errors.append(e)
+                continue
             tx_hash = res.get("tx_hash")
             if tx_hash:
                 hashes.append(tx_hash)
+
+        # Nothing broadcast: surface the failure so the caller lets the user
+        # retry. If some txs of a multi-output sweep did go out, return those
+        # instead of reporting a total failure for funds that already moved.
+        if not hashes and errors:
+            raise errors[0]
+
         return hashes
