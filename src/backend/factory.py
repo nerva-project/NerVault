@@ -38,6 +38,14 @@ async def _rate_limit_key() -> str:
     return client_ip()
 
 
+def _is_public_endpoint() -> bool:
+    """True for the always-open meta (health) and index blueprints, matched by
+    exact leaf blueprint name so a future blueprint such as 'metadata' can't
+    slip through a substring check."""
+    leaf = (request.blueprint or "").rsplit(".", 1)[-1]
+    return leaf in ("meta", "index")
+
+
 async def create_app() -> Quart:
     """
     Create and configure the API-only Quart application.
@@ -130,8 +138,7 @@ async def create_app() -> Quart:
             if current_user.auth_id is None:
                 return
 
-            endpoint = request.endpoint or ""
-            if ".meta." in endpoint or ".index." in endpoint:
+            if _is_public_endpoint():
                 return
 
             try:
@@ -151,8 +158,7 @@ async def create_app() -> Quart:
             """Returns a 503 for non-meta endpoints while in maintenance mode."""
             from backend.library.helpers import on_maintenance
 
-            endpoint = request.endpoint or ""
-            if ".meta." in endpoint or ".index." in endpoint:
+            if _is_public_endpoint():
                 return None
 
             if await on_maintenance():
