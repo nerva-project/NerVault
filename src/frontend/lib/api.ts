@@ -65,7 +65,7 @@ async function request<T>(
     /* non-JSON response */
   }
 
-  if (!res.ok || data.status === "error") {
+  if (!res.ok || data.status !== "success") {
     throw new ApiError(
       data.error || `Request failed (${res.status})`,
       res.status,
