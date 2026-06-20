@@ -1,6 +1,8 @@
 from typing import Any, Dict, Tuple, Optional
 
-from httpx import ReadError, ConnectError, RemoteProtocolError
+from json import JSONDecodeError
+
+from httpx import HTTPError
 from nerva import WalletRPC
 
 
@@ -32,7 +34,7 @@ class Wallet:
                 return True
             return False
 
-        except (ConnectError, ReadError, RemoteProtocolError):
+        except (HTTPError, JSONDecodeError, KeyError):
             return False
 
     async def height(self) -> Dict[str, Any]:
