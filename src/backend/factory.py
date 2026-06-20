@@ -137,7 +137,10 @@ async def create_app() -> Quart:
             try:
                 await current_user.load()  # type: ignore[attr-defined]
             except ValueError:
-                return
+                # The cookie names a user that no longer exists: clear the stale
+                # session instead of proceeding with a default "ghost" user.
+                logout_user()
+                raise Unauthorized()
 
             if not current_user.session_is_current():  # type: ignore[attr-defined]
                 logout_user()
