@@ -8,7 +8,7 @@ from datetime import timedelta
 import click
 from quart import Quart, Response, jsonify, request
 from aiosmtplib import SMTP, SMTPException
-from quart_auth import QuartAuth, Unauthorized, current_user
+from quart_auth import QuartAuth, Unauthorized, logout_user, current_user
 from nerva.daemon import DaemonHTTP
 from quart_bcrypt import Bcrypt
 from password_validator import PasswordValidator
@@ -136,7 +136,11 @@ async def create_app() -> Quart:
             try:
                 await current_user.load()  # type: ignore[attr-defined]
             except ValueError:
-                pass
+                return
+
+            if not current_user.session_is_current():  # type: ignore[attr-defined]
+                logout_user()
+                raise Unauthorized()
 
         @app.before_request
         async def _check_maintenance() -> Optional[tuple[Response, int]]:

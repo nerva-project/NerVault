@@ -29,6 +29,7 @@ class User(AuthUser):
         "totp_secret",
         "totp_enabled",
         "backup_codes",
+        "session_version",
         "wallet_password",
         "wallet_created",
         "wallet_connected",
@@ -46,6 +47,14 @@ class User(AuthUser):
         """
         super().__init__(auth_id=username)
 
+        # quart-auth passes the stored auth_id here: either a bare username
+        # (direct construction) or "username:session_version" (from the cookie).
+        token_version: Optional[int] = None
+        if username and ":" in username:
+            username, _, raw = username.partition(":")
+            token_version = int(raw) if raw.isdigit() else None
+
+        self._token_version: Optional[int] = token_version
         self.username: str = username
         self.email: str = ""
         self.password: str = ""
@@ -56,6 +65,7 @@ class User(AuthUser):
         self.totp_secret: Optional[str] = None
         self.totp_enabled: bool = False
         self.backup_codes: list[str] = []
+        self.session_version: int = 0
         self.wallet_password: Optional[str] = ""
         self.wallet_created: bool = False
         self.wallet_connected: bool = False
@@ -96,6 +106,15 @@ class User(AuthUser):
         if self.email_2fa:
             return "email"
         return None
+
+    def session_is_current(self) -> bool:
+        """
+        Whether the auth cookie's session version matches the stored one. A
+        legacy cookie without a version is treated as version 0, so existing
+        sessions stay valid until the next password/email change bumps it.
+        """
+        presented = self._token_version if self._token_version is not None else 0
+        return presented == self.session_version
 
     async def save(self, fields: Optional[list[str]] = None) -> None:
         """
@@ -143,6 +162,7 @@ class User(AuthUser):
         self.totp_secret = user.get("totp_secret")
         self.totp_enabled = user.get("totp_enabled", False)
         self.backup_codes = user.get("backup_codes", [])
+        self.session_version = user.get("session_version", 0)
         self.wallet_password = user.get("wallet_password", "")
         self.wallet_created = user.get("wallet_created", False)
         self.wallet_connected = user.get("wallet_connected", False)

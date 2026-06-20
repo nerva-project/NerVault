@@ -64,6 +64,12 @@ PASSWORD_POLICY = (
 _DUMMY_PASSWORD_HASH = "$2b$12$RRy7tt6i02lRca/5bFoKO.3GCKBPyVWDGZ/76LNSWG8SSY8IeIkoq"
 
 
+def _issue_session(username: str, session_version: int) -> None:
+    """Log the user in with a cookie carrying their current session version, so a
+    later password/email change can invalidate every other session."""
+    login_user(User(f"{username}:{session_version}"))
+
+
 async def _account_rate_limit_key() -> str:
     """Rate-limit key based on the targeted account, for brute-force protection."""
     data = await request.get_json(silent=True) or {}
@@ -222,7 +228,7 @@ async def _register() -> tuple[Response, int]:
     await send_email(user.email, "Account Activation", template)
 
     await capture_event(user.username, "register")
-    login_user(user)
+    _issue_session(user.username, user.session_version)
 
     return jsonify(
         {
@@ -362,7 +368,7 @@ async def _login() -> tuple[Response, int]:
         ), 200
 
     await capture_event(user.username, "login")
-    login_user(user)
+    _issue_session(user.username, user.session_version)
 
     return jsonify({"status": "success", "result": _user_dict(user)}), 200
 
@@ -472,7 +478,8 @@ async def _reset_token(token: str) -> tuple[Response, int]:
         return invalid, 400
 
     user.password = bcrypt.generate_password_hash(password).decode("utf8")
-    await user.save(["password"])
+    user.session_version += 1
+    await user.save(["password", "session_version"])
 
     await capture_event(user.username, "password_change")
 
@@ -515,7 +522,9 @@ async def _change_password() -> tuple[Response, int]:
         return jsonify({"status": "error", "error": PASSWORD_POLICY}), 400
 
     current_user.password = bcrypt.generate_password_hash(password).decode("utf8")
-    await current_user.save(["password"])
+    current_user.session_version += 1
+    await current_user.save(["password", "session_version"])
+    _issue_session(current_user.username, current_user.session_version)
 
     await capture_event(current_user.username, "password_change")
 
@@ -599,7 +608,7 @@ async def _login_2fa() -> tuple[Response, int]:
         ), 401
 
     await capture_event(user.username, "login")
-    login_user(user)
+    _issue_session(user.username, user.session_version)
 
     if used_backup:
         await capture_event(user.username, "login_2fa_backup_used")
@@ -803,7 +812,9 @@ async def _change_email_confirm(token: str) -> tuple[Response, int]:
 
     old_email = current_user.email
     current_user.email = new_email
-    await current_user.save(["email"])
+    current_user.session_version += 1
+    await current_user.save(["email", "session_version"])
+    _issue_session(current_user.username, current_user.session_version)
 
     notice = await render_template("email/email_updated.html", new_email=new_email)
     await send_email(old_email, "Email Address Changed", notice)
