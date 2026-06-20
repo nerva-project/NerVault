@@ -17,9 +17,11 @@ import InfoTip from "../../components/ui/InfoTip.vue"
 import Spinner from "../../components/ui/Spinner.vue"
 import { useToast } from "../../composables/useToast"
 import { useWalletStore } from "../../stores/wallet"
+import { useAuthStore } from "../../stores/auth"
 
 const router = useRouter()
 const wallet = useWalletStore()
+const auth = useAuthStore()
 const toast = useToast()
 
 const loading = ref(true)
@@ -297,6 +299,8 @@ const sendErr = ref("")
 const confirmOpen = ref(false)
 const confirmErr = ref("")
 const sendCode = ref("")
+const sendPass = ref("")
+const hasTwoFactor = computed(() => !!auth.user?.two_factor?.method)
 const prepared = ref<{ amount: number; fee: number } | null>(null)
 const sweepToggleDisabled = computed(() => !sendAddr.value.trim())
 
@@ -360,6 +364,7 @@ async function review(): Promise<void> {
     }
     confirmErr.value = ""
     sendCode.value = ""
+    sendPass.value = ""
     sendOpen.value = false
     confirmOpen.value = true
   } catch (e) {
@@ -397,11 +402,15 @@ async function confirmSend(): Promise<void> {
   confirmErr.value = ""
   sending.value = true
   try {
-    const res = await api.post("/wallet/transfer", { code: sendCode.value })
+    const res = await api.post("/wallet/transfer", {
+      code: sendCode.value,
+      password: sendPass.value,
+    })
     toast.success(res.message || "Transaction sent.")
     confirmOpen.value = false
     prepared.value = null
     sendCode.value = ""
+    sendPass.value = ""
     sendAddr.value = ""
     sendAmount.value = ""
     sendSweep.value = false
@@ -730,6 +739,9 @@ async function remove(): Promise<void> {
         </div>
       </div>
       <TwoFactorField v-model="sendCode" />
+      <FormField v-if="!hasTwoFactor" label="Account password" input-id="send-pw">
+        <PasswordInput id="send-pw" v-model="sendPass" autocomplete="current-password" />
+      </FormField>
       <div class="flex gap-2">
         <Btn variant="ghost" class="flex-1" :disabled="sending" @click="backToReview">Back</Btn>
         <Btn variant="primary" class="flex-1" :disabled="sending" @click="confirmSend">

@@ -26,7 +26,11 @@ from backend.factory import cache, bcrypt, daemon, docker
 from backend.library.rpc import Wallet
 from backend.utils.models import User
 from backend.library.utils import to_atomic, sort_transactions
-from backend.library.helpers import capture_event, verify_2fa_code
+from backend.library.helpers import (
+    capture_event,
+    verify_step_up,
+    verify_2fa_code,
+)
 from backend.utils.decorators import check_confirmed
 from backend.library.validation import validate_seed
 
@@ -551,6 +555,7 @@ async def _transfer() -> tuple[Response, int]:
     """
     data = await request.get_json(silent=True) or {}
     code = str(data.get("code") or "")
+    password = str(data.get("password") or "")
 
     wallet = _wallet_rpc(timeout=30)
 
@@ -575,9 +580,13 @@ async def _transfer() -> tuple[Response, int]:
             }
         ), 409
 
-    if not await verify_2fa_code(current_user, code):
+    if not await verify_step_up(current_user, code, password):
         return jsonify(
-            {"status": "error", "error": "Invalid or missing two-factor code."}
+            {
+                "status": "error",
+                "error": "Verification failed. Re-enter your two-factor code "
+                "or password.",
+            }
         ), 401
 
     try:

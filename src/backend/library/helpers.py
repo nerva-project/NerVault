@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import hmac
 
-from backend.factory import cache
+from backend.factory import cache, bcrypt
 from backend.utils.models import Event
 
 if TYPE_CHECKING:
@@ -78,3 +78,23 @@ async def verify_2fa_code(user: User, code: str) -> bool:
             return True
 
     return False
+
+
+async def verify_step_up(user: User, code: str, password: str) -> bool:
+    """
+    Confirms a sensitive action. When the user has 2FA enabled a valid step-up
+    code is required; otherwise the account password is required — so a user
+    without 2FA still re-authenticates instead of acting on the session alone.
+
+    Args:
+        user (User): The authenticated user performing the action.
+        code (str): The step-up code (used when 2FA is enabled).
+        password (str): The account password (used when 2FA is disabled).
+
+    Returns:
+        bool: True if the step-up check passes, else False.
+    """
+    if user.two_factor_method is not None:
+        return await verify_2fa_code(user, code)
+
+    return bool(password) and bcrypt.check_password_hash(user.password, password)
