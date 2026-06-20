@@ -867,15 +867,23 @@ async def _2fa_email_enable() -> tuple[Response, int]:
 @check_confirmed
 async def _2fa_email_disable() -> tuple[Response, int]:
     """
-    Disables email-based two-factor authentication after verifying the password.
+    Disables email-based two-factor authentication after verifying the password
+    and a current step-up code, so the second factor cannot be stripped with the
+    password alone.
     """
     data = await request.get_json(silent=True) or {}
     password = str(data.get("password") or "")
+    code = str(data.get("code") or "")
 
     if not bcrypt.check_password_hash(current_user.password, password):
         return jsonify(
             {"status": "error", "error": "Current password is incorrect."}
         ), 400
+
+    if not await verify_2fa_code(current_user, code):
+        return jsonify(
+            {"status": "error", "error": "Invalid or missing two-factor code."}
+        ), 401
 
     current_user.email_2fa = False
     await current_user.save(["email_2fa"])

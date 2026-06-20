@@ -8,6 +8,7 @@ import BaseModal from "../../components/ui/BaseModal.vue"
 import CopyField from "../../components/ui/CopyField.vue"
 import FormField from "../../components/ui/FormField.vue"
 import PasswordInput from "../../components/ui/PasswordInput.vue"
+import TwoFactorField from "../../components/ui/TwoFactorField.vue"
 import { api, ApiError } from "../../lib/api"
 import { useToast } from "../../composables/useToast"
 import { useAuthStore, type User } from "../../stores/auth"
@@ -116,6 +117,7 @@ async function emailDisable(): Promise<void> {
   try {
     const res = await api.post<User>("/auth/2fa/email/disable", {
       password: form.password,
+      code: form.code,
     })
     auth.setUser(res.result ?? null)
     toast.success("Email two-factor authentication disabled.")
@@ -270,12 +272,13 @@ async function backupRegenerate(): Promise<void> {
     <BaseModal :open="modal === 'emailDisable'" title="Turn off email codes" @close="close">
       <Alert v-if="error" class="mb-4">{{ error }}</Alert>
       <p class="text-text-dim text-[0.9rem] mb-4">
-        Confirm your password to stop requiring an email code at login.
+        Confirm your password and an email code to stop requiring a code at login.
       </p>
       <form @submit.prevent="emailDisable">
         <FormField label="Current password" input-id="ed-pw">
           <PasswordInput id="ed-pw" v-model="form.password" autocomplete="current-password" required />
         </FormField>
+        <TwoFactorField v-model="form.code" />
         <Btn type="submit" variant="danger" block :disabled="loading">
           {{ loading ? "Turning off…" : "Turn off email codes" }}
         </Btn>
