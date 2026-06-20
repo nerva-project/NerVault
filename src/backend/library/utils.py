@@ -81,7 +81,10 @@ def sort_transactions(transactions: Dict[str, Any]) -> Dict[str, Dict[str, Any]]
 
     for tx_type in transactions:
         for t in transactions[tx_type]:
-            txs[t["txid"]] = {
+            # Key by txid AND type: one txid can appear in multiple buckets
+            # (e.g. a self-send in both "in" and "out"); a bare-txid key would
+            # silently drop one leg from the history.
+            txs[f"{t['txid']}:{tx_type}"] = {
                 "type": tx_type,
                 "amount": t["amount"],
                 "timestamp": t["timestamp"],
