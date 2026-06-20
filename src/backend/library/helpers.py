@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING
 
 import hmac
 
+from redis.exceptions import RedisError
+
 from backend.factory import cache, bcrypt
 from backend.utils.models import Event
 
@@ -21,12 +23,17 @@ async def capture_event(username: str, category: str) -> None:
 
 async def on_maintenance() -> bool:
     """
-    Checks if the system is in maintenance mode.
+    Checks if the system is in maintenance mode. Fails open (returns False) when
+    Redis is unreachable, so a transient cache outage does not 503 every request
+    through the maintenance gate.
 
     Returns:
         bool: True if in maintenance mode, False otherwise.
     """
-    return bool(await cache.redis.exists("maintenance"))
+    try:
+        return bool(await cache.redis.exists("maintenance"))
+    except RedisError:
+        return False
 
 
 async def set_maintenance(enable: bool = False) -> None:
