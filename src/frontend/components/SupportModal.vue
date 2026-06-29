@@ -45,7 +45,7 @@ const fiat = [
 
 <template>
   <BaseModal :open="open" @close="$emit('close')">
-    <template #title>Support <b>NerVault</b></template>
+    <template #title>Support <b class="bg-[image:var(--grad)] bg-clip-text text-transparent">NerVault</b></template>
 
     <p class="text-text-dim text-[0.95rem] m-0 mb-5">
       NerVault is free to use, but its development and hosting are not. If you find it useful,

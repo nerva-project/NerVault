@@ -38,8 +38,8 @@ async function copy(text: string): Promise<void> {
       type="button"
       :disabled="loading"
       :aria-label="copied ? 'Copied' : 'Copy'"
-      class="shrink-0 inline-flex items-center justify-center size-[30px] rounded-field bg-transparent cursor-pointer enabled:hover:text-text enabled:hover:bg-surface disabled:opacity-40 disabled:cursor-default"
-      :class="copied ? 'text-accent' : 'text-text-dim'"
+      class="shrink-0 inline-flex items-center justify-center size-[30px] rounded-field bg-transparent cursor-pointer enabled:hover:bg-surface disabled:opacity-40 disabled:cursor-default"
+      :class="copied ? 'text-accent enabled:hover:text-accent' : 'text-text-dim enabled:hover:text-text'"
       @click="copy(value)"
     >
       <svg v-if="copied" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"
