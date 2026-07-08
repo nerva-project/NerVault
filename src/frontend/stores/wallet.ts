@@ -14,6 +14,7 @@ export interface WalletStatus {
 }
 
 export interface SortedTx {
+  txid: string
   type: string
   amount: string
   timestamp: number

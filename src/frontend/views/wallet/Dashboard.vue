@@ -151,7 +151,7 @@ async function keepAlive(): Promise<void> {
 const txList = computed(() => {
   const sorted = wallet.overview?.sorted_transactions ?? {}
   return Object.entries(sorted)
-    .map(([txid, t]) => ({ txid, ...t }))
+    .map(([key, t]) => ({ key, ...t }))
     .sort((a, b) => b.timestamp - a.timestamp)
 })
 
@@ -647,7 +647,7 @@ async function remove(): Promise<void> {
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="tx in txList" :key="tx.txid">
+                <tr v-for="tx in txList" :key="tx.key">
                   <td>
                     <Badge :variant="tx.type === 'in' ? 'in' : 'out'">{{ tx.type }}</Badge>
                   </td>
