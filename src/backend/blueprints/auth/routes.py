@@ -164,8 +164,8 @@ async def _register() -> tuple[Response, int]:
         return jsonify({"status": "error", "error": "Already authenticated."}), 400
 
     data = await request.get_json(silent=True) or {}
-    username = str(data.get("username") or "").strip().lower()
-    email = str(data.get("email") or "").strip()
+    username = str(data.get("username") or "").strip()
+    email = str(data.get("email") or "").strip().lower()
     password = str(data.get("password") or "")
 
     if not is_valid_username(username):
@@ -173,7 +173,7 @@ async def _register() -> tuple[Response, int]:
             {
                 "status": "error",
                 "error": "Username must be 3-32 characters long and contain only "
-                "lowercase letters, digits, or underscores.",
+                "letters, digits, or underscores.",
             }
         ), 400
 
@@ -184,11 +184,15 @@ async def _register() -> tuple[Response, int]:
             {"status": "error", "error": "A valid email address is required."}
         ), 400
 
-    existing = User(username=username)
-    try:
-        await existing.load()
+    if await User.username_taken(username):
         return jsonify(
             {"status": "error", "error": "This username is already registered."}
+        ), 409
+
+    try:
+        await User.get_by_email(email)
+        return jsonify(
+            {"status": "error", "error": "This email address is already registered."}
         ), 409
     except ValueError:
         pass
@@ -330,13 +334,11 @@ async def _login() -> tuple[Response, int]:
         ), 200
 
     data = await request.get_json(silent=True) or {}
-    username = str(data.get("username") or "").strip().lower()
+    username = str(data.get("username") or "").strip()
     password = str(data.get("password") or "")
 
-    user = User(username=username)
-
     try:
-        await user.load()
+        user = await User.get_by_username(username)
     except ValueError:
         # Equalise timing with the valid-user path so a fast response does not
         # reveal that the username is unregistered.
@@ -693,7 +695,7 @@ async def _change_email() -> tuple[Response, int]:
     """
     data = await request.get_json(silent=True) or {}
     password = str(data.get("password") or "")
-    new_email = str(data.get("new_email") or "").strip()
+    new_email = str(data.get("new_email") or "").strip().lower()
     code = str(data.get("code") or "")
 
     if not bcrypt.check_password_hash(current_user.password, password):
@@ -713,7 +715,7 @@ async def _change_email() -> tuple[Response, int]:
             {"status": "error", "error": "A valid email address is required."}
         ), 400
 
-    if new_email.lower() == current_user.email.lower():
+    if new_email == current_user.email.lower():
         return jsonify(
             {"status": "error", "error": "That is already your email address."}
         ), 400

@@ -217,6 +217,53 @@ class User(AuthUser):
         await User.collection.update_one(query, {"$set": update})
 
     @staticmethod
+    async def username_taken(username: str) -> bool:
+        """
+        Checks whether a username is already registered, compared
+        case-insensitively so a different casing still counts as taken.
+
+        Args:
+            username (str): The username to check.
+
+        Returns:
+            bool: True if a user exists with this username in any casing.
+        """
+        user = await User.collection.find_one(
+            {"username": username.strip()},
+            {"_id": 1},
+            collation={"locale": "en", "strength": 2},
+        )
+        return user is not None
+
+    @staticmethod
+    async def get_by_username(username: str) -> User:
+        """
+        Retrieves a User instance by username, matched case-insensitively and
+        resolved to the stored casing.
+
+        Args:
+            username (str): The username in any casing.
+
+        Returns:
+            User: A User instance.
+
+        Raises:
+            ValueError: If no user is found with the given username.
+        """
+        user = await User.collection.find_one(
+            {"username": username.strip()},
+            {"username": 1},
+            collation={"locale": "en", "strength": 2},
+        )
+
+        if not user:
+            raise ValueError("User not found")
+
+        u = User(user["username"])
+        await u.load()
+        return u
+
+    @staticmethod
     async def get_by_email(email: str) -> User:
         """
         Retrieves a User instance by email.
@@ -230,7 +277,11 @@ class User(AuthUser):
         Raises:
             ValueError: If no user is found with the given email.
         """
-        user = await User.collection.find_one({"email": email})
+        # Case-insensitive match so legacy mixed-case emails keep resolving.
+        user = await User.collection.find_one(
+            {"email": email.strip()},
+            collation={"locale": "en", "strength": 2},
+        )
 
         if not user:
             raise ValueError("User not found")

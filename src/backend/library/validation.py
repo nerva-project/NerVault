@@ -1,6 +1,6 @@
 from re import compile as re_compile
 
-USERNAME_RE = re_compile(r"^[a-z0-9_]{3,32}$")
+USERNAME_RE = re_compile(r"^[a-zA-Z0-9_]{3,32}$")
 
 SEED_WORD_RE = re_compile(r"^[a-z]+$")
 SEED_WORD_COUNT = 25
