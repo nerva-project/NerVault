@@ -171,6 +171,12 @@ async function keepAlive(): Promise<void> {
   }
 }
 
+function txBadge(type: string): { variant: "in" | "out" | "pending"; label: string } {
+  if (type === "in" || type === "out") return { variant: type, label: type }
+  if (type === "failed") return { variant: "out", label: "failed" }
+  return { variant: "pending", label: "pending" }
+}
+
 const txList = computed(() => {
   const sorted = wallet.overview?.sorted_transactions ?? {}
   return Object.entries(sorted)
@@ -673,7 +679,7 @@ async function remove(): Promise<void> {
               <tbody>
                 <tr v-for="tx in txList" :key="tx.key">
                   <td>
-                    <Badge :variant="tx.type === 'in' ? 'in' : 'out'">{{ tx.type }}</Badge>
+                    <Badge :variant="txBadge(tx.type).variant">{{ txBadge(tx.type).label }}</Badge>
                   </td>
                   <td class="text-text-dim">{{ formatTimestamp(tx.timestamp) }}</td>
                   <td>
