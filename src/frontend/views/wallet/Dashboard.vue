@@ -745,7 +745,9 @@ async function remove(): Promise<void> {
               >
             </div>
           </div>
-          <p class="mt-2 text-[0.8rem] text-muted">Available: {{ fromAtomic(unlockedBalance) }} XNV</p>
+          <p class="mt-2 text-[0.8rem] text-muted">
+            Available: {{ fromAtomic(unlockedBalance) }} XNV<template v-if="lockedLine"> · {{ lockedLine }}</template>
+          </p>
         </FormField>
         <FormField
           label="Payment ID (optional)"
