@@ -85,6 +85,7 @@ def sort_transactions(transactions: Dict[str, Any]) -> Dict[str, Dict[str, Any]]
             # (e.g. a self-send in both "in" and "out"); a bare-txid key would
             # silently drop one leg from the history.
             txs[f"{t['txid']}:{tx_type}"] = {
+                "txid": t["txid"],
                 "type": tx_type,
                 "amount": t["amount"],
                 "timestamp": t["timestamp"],
@@ -101,6 +102,7 @@ def sort_transactions(transactions: Dict[str, Any]) -> Dict[str, Dict[str, Any]]
             total -= tx_data["fee"]
 
         sorted_txs[tx_id] = {
+            "txid": tx_data["txid"],
             "type": tx_data["type"],
             "amount": str(tx_data["amount"]),
             "timestamp": tx_data["timestamp"],
