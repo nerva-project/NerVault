@@ -135,6 +135,29 @@ async function maybeRenew(): Promise<void> {
   }
 }
 
+// Silently re-fetch the overview so balances and transactions stay current
+// without a manual reload. Skips hidden tabs; a failed attempt waits out the
+// full interval before retrying.
+const REFRESH_INTERVAL_MS = 30 * 1000
+
+let lastRefresh = Date.now()
+let refreshing = false
+async function maybeRefresh(): Promise<void> {
+  if (loading.value || refreshing || document.hidden) return
+  if (now.value - lastRefresh < REFRESH_INTERVAL_MS) return
+  refreshing = true
+  try {
+    await wallet.fetchOverview()
+  } catch (e) {
+    if (e instanceof ApiError && (e.code === "not_connected" || e.code === "not_ready" || e.status === 401)) {
+      expireSession()
+    }
+  } finally {
+    lastRefresh = Date.now()
+    refreshing = false
+  }
+}
+
 async function keepAlive(): Promise<void> {
   try {
     await wallet.keepAlive()
@@ -195,6 +218,7 @@ onMounted(() => {
   timer = setInterval(() => {
     now.value = Date.now()
     void maybeRenew()
+    void maybeRefresh()
   }, 1000)
   ACTIVITY_EVENTS.forEach((ev) => window.addEventListener(ev, markActive, { passive: true }))
   cardRO = new ResizeObserver(() => syncCardHeights())
