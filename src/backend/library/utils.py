@@ -1,5 +1,6 @@
 from typing import Any, Dict
 
+from time import time
 from decimal import Decimal
 
 from quart import request
@@ -7,6 +8,12 @@ from quart import request
 from backend import config
 
 PICO_XNV = Decimal("0.000000000001")
+
+# wallet2 marks a pending tx "failed" when two consecutive pool polls miss it,
+# which false-positives when the tx is mined before the wallet scans its block
+# (nerva-project/nerva wallet2.cpp update_pool_state). Show young failures as
+# pending until they outlive the race window.
+FAILED_GRACE_SECONDS = 300
 
 
 def client_ip() -> str:
@@ -79,14 +86,30 @@ def sort_transactions(transactions: Dict[str, Any]) -> Dict[str, Dict[str, Any]]
     txs: Dict[str, Dict[str, Any]] = {}
     sorted_txs: Dict[str, Dict[str, Any]] = {}
 
+    now = time()
+    live_txids = {
+        t["txid"]
+        for tx_type, entries in transactions.items()
+        if tx_type != "failed"
+        for t in entries
+    }
+
     for tx_type in transactions:
         for t in transactions[tx_type]:
+            entry_type = tx_type
+            if tx_type == "failed":
+                # A "failed" tx that also lives in another bucket (or is still
+                # inside the grace window) is the wallet2 race, not a failure.
+                if t["txid"] in live_txids:
+                    continue
+                if now - t["timestamp"] < FAILED_GRACE_SECONDS:
+                    entry_type = "pending"
             # Key by txid AND type: one txid can appear in multiple buckets
             # (e.g. a self-send in both "in" and "out"); a bare-txid key would
             # silently drop one leg from the history.
-            txs[f"{t['txid']}:{tx_type}"] = {
+            txs[f"{t['txid']}:{entry_type}"] = {
                 "txid": t["txid"],
-                "type": tx_type,
+                "type": entry_type,
                 "amount": t["amount"],
                 "timestamp": t["timestamp"],
                 "fee": t["fee"],
