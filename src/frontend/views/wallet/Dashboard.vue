@@ -867,10 +867,10 @@ async function remove(): Promise<void> {
         have saved your seed first — this cannot be undone.
       </p>
       <Alert v-if="deleteErr" class="mb-4">{{ deleteErr }}</Alert>
-      <TwoFactorField v-model="deleteCode" />
-      <FormField v-if="!hasTwoFactor" label="Account password" input-id="delete-pw">
-        <PasswordInput id="delete-pw" v-model="deletePass" autocomplete="current-password" />
+      <FormField label="Account password" input-id="delete-pw">
+        <PasswordInput id="delete-pw" v-model="deletePass" autocomplete="current-password" required />
       </FormField>
+      <TwoFactorField v-model="deleteCode" />
       <div class="flex flex-col gap-2">
         <Btn variant="danger" block :disabled="deleting" @click="remove">
           {{ deleting ? "Deleting…" : "Yes, delete my wallet" }}

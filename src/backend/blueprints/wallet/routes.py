@@ -866,13 +866,12 @@ async def _delete() -> tuple[Response, int]:
             {"status": "error", "error": "Please confirm deletion of the wallet."}
         ), 400
 
-    if not await verify_step_up(current_user, code, password):
+    if not bcrypt.check_password_hash(current_user.password, password):
+        return jsonify({"status": "error", "error": "Invalid password."}), 401
+
+    if not await verify_2fa_code(current_user, code):
         return jsonify(
-            {
-                "status": "error",
-                "error": "Verification failed. Re-enter your two-factor code "
-                "or password.",
-            }
+            {"status": "error", "error": "Invalid or missing two-factor code."}
         ), 401
 
     lock = await _acquire_wallet_lock(current_user.username)
