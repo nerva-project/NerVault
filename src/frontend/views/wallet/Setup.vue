@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue"
+import { computed, onMounted, ref } from "vue"
 import { useRouter } from "vue-router"
 
 import Alert from "../../components/ui/Alert.vue"
 import Btn from "../../components/ui/Btn.vue"
 import Card from "../../components/ui/Card.vue"
 import FormField from "../../components/ui/FormField.vue"
-import { ApiError } from "../../lib/api"
+import { api, ApiError } from "../../lib/api"
 import { useWalletStore } from "../../stores/wallet"
 
 const router = useRouter()
@@ -14,14 +14,38 @@ const wallet = useWalletStore()
 
 const mode = ref<"choose" | "restore">("choose")
 const seed = ref("")
+const restoreHeight = ref("0")
+const networkHeight = ref<number | null>(null)
 const agree = ref(false)
 const loading = ref(false)
 const error = ref("")
+
+const parsedHeight = computed<number>(() => {
+  const raw = String(restoreHeight.value ?? "").trim()
+  if (raw === "") return 0
+  return /^\d+$/.test(raw) ? Number(raw) : NaN
+})
+
+const heightError = computed<string>(() => {
+  const height = parsedHeight.value
+  if (!Number.isFinite(height)) return "Enter a whole block number."
+  if (networkHeight.value !== null && height >= networkHeight.value)
+    return `Must be below the current height (${networkHeight.value.toLocaleString()}).`
+  return ""
+})
 
 onMounted(async () => {
   try {
     const status = await wallet.fetchStatus()
     if (status?.created) router.replace({ name: "wallet-loading" })
+  } catch {
+    /* ignore */
+  }
+
+  try {
+    const res = await api.get<{ node: Record<string, number | string> }>("/meta/info")
+    const height = Number(res.result?.node?.height)
+    if (Number.isFinite(height) && height > 0) networkHeight.value = height
   } catch {
     /* ignore */
   }
@@ -42,13 +66,17 @@ async function create(): Promise<void> {
 
 async function restore(): Promise<void> {
   error.value = ""
+  if (heightError.value) {
+    error.value = heightError.value
+    return
+  }
   if (!agree.value) {
     error.value = "Please confirm you understand the risks."
     return
   }
   loading.value = true
   try {
-    await wallet.setup("restore", seed.value.trim())
+    await wallet.setup("restore", seed.value.trim(), parsedHeight.value)
     router.push({ name: "wallet-loading" })
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : "Could not restore wallet."
@@ -83,6 +111,15 @@ async function restore(): Promise<void> {
             class="w-full px-[0.85rem] py-[0.7rem] bg-bg-soft border border-border rounded-field text-text resize-y min-h-[90px] font-mono text-[0.9rem] focus:border-accent focus:outline-none"
             v-model="seed" placeholder="word1 word2 word3 …"
             autocomplete="off" spellcheck="false"></textarea>
+        </FormField>
+        <FormField label="Restore from block height" input-id="restore-height" :error="heightError"
+          hint="Scanning starts at this block. Leave it at 0 to scan the whole chain, or enter the height your wallet was first used at for a much faster restore.">
+          <input id="restore-height" type="text" inputmode="numeric" pattern="[0-9]*"
+            class="w-full px-[0.85rem] py-[0.7rem] bg-bg-soft border border-border rounded-field text-text font-mono text-[0.9rem] focus:border-accent focus:outline-none"
+            v-model="restoreHeight" placeholder="0" autocomplete="off" spellcheck="false" />
+          <p v-if="networkHeight !== null" class="m-0 text-[0.82rem] text-text-dim">
+            Current network height: {{ networkHeight.toLocaleString() }}
+          </p>
         </FormField>
         <label class="flex items-start gap-[0.55rem] text-[0.9rem] text-text-dim mb-3">
           <input type="checkbox" v-model="agree" class="mt-[0.2rem] accent-accent" />

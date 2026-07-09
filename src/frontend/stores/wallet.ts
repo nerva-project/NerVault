@@ -55,8 +55,12 @@ export const useWalletStore = defineStore("wallet", {
       this.overview = res.result ?? null
       return this.overview
     },
-    async setup(mode: "create" | "restore", seed?: string): Promise<void> {
-      await api.post("/wallet/setup", { mode, seed })
+    async setup(
+      mode: "create" | "restore",
+      seed?: string,
+      restoreHeight?: number,
+    ): Promise<void> {
+      await api.post("/wallet/setup", { mode, seed, restore_height: restoreHeight })
     },
     async connect(): Promise<void> {
       await api.post("/wallet/connect")

@@ -38,13 +38,21 @@ class Docker:
         )
         self.extra_hosts: dict[str, str] = {"host.docker.internal": "host-gateway"}
 
-    async def create_wallet(self, username: str, seed: Optional[str] = None) -> str:
+    async def create_wallet(
+        self,
+        username: str,
+        seed: Optional[str] = None,
+        restore_height: int = 0,
+    ) -> str:
         """
         Creates a new wallet for a user.
 
         Args:
             username (str): The username of the user.
             seed (Optional[str], optional): The mnemonic seed for the wallet. Defaults to None.
+            restore_height (int, optional): The block height a seed restore starts
+                scanning from. Ignored when no seed is given, as brand-new wallets
+                always start at the chain tip. Defaults to 0.
 
         Returns:
             str: The short ID of the wallet initialization container.
@@ -74,7 +82,7 @@ class Docker:
                 'yes "" | nerva-wallet-cli '
                 "--restore-deterministic-wallet "
                 '--generate-new-wallet "/wallet/$1.wallet" '
-                "--restore-height 0 "
+                '--restore-height "$4" '
                 '--password "$2" '
                 f'--daemon-address "{daemon_address}" '
                 f'--daemon-login "{daemon_login}" '
@@ -92,6 +100,7 @@ class Docker:
                 u.username,
                 wallet_password,
                 seed,
+                str(int(restore_height)),
             ]
         else:
             entrypoint = [

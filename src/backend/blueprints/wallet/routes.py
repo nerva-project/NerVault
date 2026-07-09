@@ -33,7 +33,7 @@ from backend.library.helpers import (
     verify_2fa_code,
 )
 from backend.utils.decorators import check_confirmed
-from backend.library.validation import validate_seed
+from backend.library.validation import validate_seed, validate_restore_height
 
 from . import wallet_bp
 
@@ -171,6 +171,7 @@ async def _setup() -> tuple[Response, int]:
     mode = str(data.get("mode") or "create").strip().lower()
 
     seed: str | None
+    restore_height = 0
     if mode == "restore":
         try:
             seed = validate_seed(str(data.get("seed") or "").lower())
@@ -182,6 +183,31 @@ async def _setup() -> tuple[Response, int]:
                     "25-word Nerva mnemonic seed phrase.",
                 }
             ), 400
+
+        try:
+            network_height = int((await daemon.get_info())["height"])
+        except Exception:
+            return jsonify(
+                {
+                    "status": "error",
+                    "error": "Could not reach the Nerva node to verify the "
+                    "restore height; please try again shortly.",
+                }
+            ), 503
+
+        try:
+            restore_height = validate_restore_height(
+                data.get("restore_height") or 0, network_height
+            )
+        except ValueError:
+            return jsonify(
+                {
+                    "status": "error",
+                    "error": "Invalid restore height; must be a whole number "
+                    f"between 0 and {network_height - 1}.",
+                }
+            ), 400
+
         event = "restore_wallet"
 
     elif mode == "create":
@@ -208,7 +234,7 @@ async def _setup() -> tuple[Response, int]:
                 {"status": "error", "error": "Wallet already exists."}
             ), 400
 
-        await docker.create_wallet(current_user.username, seed)
+        await docker.create_wallet(current_user.username, seed, restore_height)
         await capture_event(current_user.username, event)
 
         current_user.wallet_created = True

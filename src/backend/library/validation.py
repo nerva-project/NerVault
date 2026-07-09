@@ -1,3 +1,5 @@
+from typing import Any
+
 from re import compile as re_compile
 
 USERNAME_RE = re_compile(r"^[a-zA-Z0-9_]{3,32}$")
@@ -55,3 +57,38 @@ def validate_seed(seed: str) -> str:
         raise ValueError("Invalid seed phrase")
 
     return " ".join(words)
+
+
+def validate_restore_height(height: Any, network_height: int) -> int:
+    """
+    Validate the block height a wallet restore should start scanning from.
+
+    Args:
+        height (Any): The requested restore height, as an integer or a string
+            of digits.
+        network_height (int): The current height of the Nerva blockchain.
+
+    Returns:
+        int: The validated restore height.
+
+    Raises:
+        ValueError: If the height is not a whole number, is negative, or is not
+            below the current network height.
+    """
+    if isinstance(height, (bool, float)):
+        raise ValueError("Invalid restore height")
+
+    if isinstance(height, str):
+        height = height.strip()
+        if not height.isdigit():
+            raise ValueError("Invalid restore height")
+
+    try:
+        value = int(height)
+    except (TypeError, ValueError):
+        raise ValueError("Invalid restore height") from None
+
+    if value < 0 or value >= network_height:
+        raise ValueError("Invalid restore height")
+
+    return value
