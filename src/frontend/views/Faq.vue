@@ -146,7 +146,7 @@ import PageHeader from "../components/ui/PageHeader.vue"
         <div class="px-5 pb-5 text-text-dim">
           <p>
             For the safest option, run your own wallet. Get the latest CLI or GUI from the
-            <a href="https://nerva.one/downloads" target="_blank" rel="noopener">Nerva Downloads</a>
+            <a href="https://nerva.one/#downloads" target="_blank" rel="noopener">Nerva Downloads</a>
             page — anything you install on your own computer keeps you in full control. NerVault uses
             <code>nerva-wallet-cli</code> under the hood.
           </p>
