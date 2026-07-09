@@ -526,19 +526,45 @@ async function reveal(): Promise<void> {
 /* ---- Delete ---- */
 const deleteOpen = ref(false)
 const deleting = ref(false)
+const deleteCode = ref("")
+const deletePass = ref("")
+const deleteErr = ref("")
+
+function openDelete(): void {
+  deleteCode.value = ""
+  deletePass.value = ""
+  deleteErr.value = ""
+  deleteOpen.value = true
+}
+
+function closeDelete(): void {
+  if (deleting.value) return
+  deleteOpen.value = false
+  deleteCode.value = ""
+  deletePass.value = ""
+  deleteErr.value = ""
+}
 
 async function remove(): Promise<void> {
+  if (deleting.value) return
+  deleteErr.value = ""
   deleting.value = true
   try {
-    await api.post("/wallet/delete", { confirm: true })
+    await api.post("/wallet/delete", {
+      confirm: true,
+      code: deleteCode.value,
+      password: deletePass.value,
+    })
     toast.success("Wallet data deleted.")
+    deleteOpen.value = false
     wallet.reset()
     router.push({ name: "wallet-setup" })
   } catch (e) {
-    toast.error(e instanceof ApiError ? e.message : "Could not delete wallet.")
+    deleteErr.value = e instanceof ApiError ? e.message : "Could not delete wallet."
   } finally {
     deleting.value = false
-    deleteOpen.value = false
+    deleteCode.value = ""
+    deletePass.value = ""
   }
 }
 </script>
@@ -698,7 +724,7 @@ async function remove(): Promise<void> {
       <Card title="Wallet tools">
         <div class="flex flex-wrap gap-2">
           <Btn variant="ghost" class="flex-1 min-w-[180px]" @click="secretsOpen = true">View secrets</Btn>
-          <Btn variant="danger" class="flex-1 min-w-[180px]" @click="deleteOpen = true">Delete wallet</Btn>
+          <Btn variant="danger" class="flex-1 min-w-[180px]" @click="openDelete">Delete wallet</Btn>
         </div>
       </Card>
     </div>
@@ -835,16 +861,21 @@ async function remove(): Promise<void> {
       </div>
     </BaseModal>
 
-    <BaseModal :open="deleteOpen" title="Delete wallet" @close="deleteOpen = false">
+    <BaseModal :open="deleteOpen" title="Delete wallet" @close="closeDelete">
       <p class="text-text-dim text-[0.95rem] m-0 mb-5">
         This permanently deletes your wallet data from our servers. If you have funds, make sure you
         have saved your seed first — this cannot be undone.
       </p>
+      <Alert v-if="deleteErr" class="mb-4">{{ deleteErr }}</Alert>
+      <TwoFactorField v-model="deleteCode" />
+      <FormField v-if="!hasTwoFactor" label="Account password" input-id="delete-pw">
+        <PasswordInput id="delete-pw" v-model="deletePass" autocomplete="current-password" />
+      </FormField>
       <div class="flex flex-col gap-2">
         <Btn variant="danger" block :disabled="deleting" @click="remove">
           {{ deleting ? "Deleting…" : "Yes, delete my wallet" }}
         </Btn>
-        <Btn variant="ghost" block @click="deleteOpen = false">Cancel</Btn>
+        <Btn variant="ghost" block :disabled="deleting" @click="closeDelete">Cancel</Btn>
       </div>
     </BaseModal>
   </section>

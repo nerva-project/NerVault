@@ -819,6 +819,12 @@ async def _secrets() -> tuple[Response, int]:
 
 
 @wallet_bp.route("/delete", methods=["POST"])
+@rate_limit(SENSITIVE_IP_LIMIT, SENSITIVE_IP_PERIOD)
+@rate_limit(
+    SENSITIVE_ACCOUNT_LIMIT,
+    SENSITIVE_ACCOUNT_PERIOD,
+    key_function=_account_rate_limit_key,
+)
 @login_required
 @check_confirmed
 async def _delete() -> tuple[Response, int]:
@@ -826,11 +832,22 @@ async def _delete() -> tuple[Response, int]:
     Stops the wallet container and permanently deletes the user's wallet data.
     """
     data = await request.get_json(silent=True) or {}
+    code = str(data.get("code") or "")
+    password = str(data.get("password") or "")
 
     if data.get("confirm") is not True:
         return jsonify(
             {"status": "error", "error": "Please confirm deletion of the wallet."}
         ), 400
+
+    if not await verify_step_up(current_user, code, password):
+        return jsonify(
+            {
+                "status": "error",
+                "error": "Verification failed. Re-enter your two-factor code "
+                "or password.",
+            }
+        ), 401
 
     lock = await _acquire_wallet_lock(current_user.username)
     if lock is None:
